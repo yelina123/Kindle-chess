@@ -2114,8 +2114,7 @@ function fitScreen() {
   if (screen && screen.height && screen.height < h) h = screen.height;
   var sx = w / 568, sy = h / 660;
   var s = sx < sy ? sx : sy;
-  if (s > 2) s = 2;
-  if (s < 0.4) s = 0.4;
+  if (!(s > 0)) s = 1;
   var app = byId('app');
   if (app) app.style.zoom = s;
 }
