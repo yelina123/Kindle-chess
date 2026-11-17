@@ -10,9 +10,14 @@ body {
   background: #ffffff; color: #000000;
   font-family: Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Heiti SC", sans-serif;
   font-size: 15px; line-height: 1.45;
+  overflow: hidden;
   -webkit-text-size-adjust: none;
 }
-#wrap { width: 92%; max-width: 568px; margin: 0 auto; padding: 18px 0 26px 0; }
+#wrap {
+  width: 568px; margin: 0 auto; padding: 18px 8px 26px 8px;
+  -webkit-box-sizing: border-box; box-sizing: border-box;
+  -webkit-transform-origin: top center; transform-origin: top center;
+}
 #hdr { border-bottom: 2px solid #000; padding-bottom: 10px; }
 h1 {
   margin: 0; font: normal 30px/36px Georgia, "Songti SC", "Times New Roman", serif;
@@ -43,11 +48,11 @@ h1 {
 <div id="wrap">
   <div id="hdr">
     <h1>Kindle 小应用</h1>
-    <div class="sub">低算力 · 黑白墨水屏 · 核心离线 · 云可选</div>
+    <div class="sub">低算力 · 黑白墨水屏 · 核心离线 · 独立单文件</div>
     <div class="author">作者 yelina123</div>
   </div>
 
-  <p class="intro">给 Kindle 第八代这类设备做的小工具。每个项目是一个独立 HTML 文件，点开即用；核心对局离线，云引擎/云分析可选。</p>
+  <p class="intro">给 Kindle 第八代这类设备做的小工具。国际象棋与中国象棋是两个独立的单文件 HTML，点开即用；核心对局离线，只有国际象棋提供可选的云分析/云引擎。</p>
 
   <a class="project" href="chess/">
     <span class="t">国际象棋</span>
@@ -55,32 +60,33 @@ h1 {
     <span class="s">打开项目</span>
   </a>
 
-  <div class="project soon">
+  <a class="project" href="xiangqi/">
     <span class="t">中国象棋</span>
-    <span class="d">预留的项目位置，稍后加入。</span>
-    <span class="s">待加入</span>
-  </div>
+    <span class="d">完整规则 · 点按走子 · 棋钟与加时 · 悔棋/翻转/提示 · 五档本地人机 · 断点续局</span>
+    <span class="s">打开项目</span>
+  </a>
 
-  <div class="note">旧地址 kindle-chess.html 会自动转到国际象棋。所有项目共用本仓库；各项目在 16:9 横竖屏与 Kindle 比例下均完整显示。</div>
+  <div class="note">旧地址 kindle-chess.html 会自动转到国际象棋。两个项目在本地是分开的 HTML；在 GitHub Pages 上从这个页面选择进入。各项目在 16:9 横竖屏与 Kindle 比例下均完整显示。</div>
 </div>
 <script>
 (function () {
   var wrap = document.getElementById("wrap");
   function fit() {
     if (!wrap) return;
-    wrap.style.zoom = 1;
+    wrap.style.webkitTransform = "scale(1)";
+    wrap.style.transform = "scale(1)";
     var w = window.innerWidth || document.documentElement.clientWidth || 375;
     var h = window.innerHeight || document.documentElement.clientHeight || 667;
-    if (screen && screen.width && screen.width < w) w = screen.width;
-    if (screen && screen.height && screen.height < h) h = screen.height;
     var sw = Math.max(wrap.scrollWidth || 0, wrap.offsetWidth || 0);
     var sh = Math.max(wrap.scrollHeight || 0, wrap.offsetHeight || 0);
-    var s = Math.min((w - 2) / (sw || 375), (h - 2) / (sh || 667));
+    var s = Math.min(w / (sw || 375), h / (sh || 667));
     if (!(s > 0)) s = 1;
-    wrap.style.zoom = s * 0.99;
+    if (s > 1) s = 1;
+    wrap.style.webkitTransform = "scale(" + s + ")";
+    wrap.style.transform = "scale(" + s + ")";
   }
   window.onresize = fit;
-  window.onorientationchange = fit;
+  window.onorientationchange = function () { setTimeout(fit, 100); };
   fit();
 })();
 </script>
