@@ -43,15 +43,15 @@ h1 {
 <div id="wrap">
   <div id="hdr">
     <h1>Kindle 小应用</h1>
-    <div class="sub">低算力 · 黑白墨水屏 · 单文件离线</div>
+    <div class="sub">低算力 · 黑白墨水屏 · 核心离线 · 云可选</div>
     <div class="author">作者 yelina123</div>
   </div>
 
-  <p class="intro">给 Kindle 第八代这类设备做的小工具。每个项目都是一个独立的 HTML 文件，点开即用，不需要网络。</p>
+  <p class="intro">给 Kindle 第八代这类设备做的小工具。每个项目是一个独立 HTML 文件，点开即用；核心对局离线，云引擎/云分析可选。</p>
 
   <a class="project" href="chess/">
     <span class="t">国际象棋</span>
-    <span class="d">完整规则 · 点按走子 · 棋钟与加时 · 棋盘编辑器 · 局面分析 · 人机对弈</span>
+    <span class="d">完整规则 · 点按走子 · 棋钟与加时 · 棋盘编辑器 · 云/本地局面分析 · 云/本地人机对弈</span>
     <span class="s">打开项目</span>
   </a>
 
@@ -61,7 +61,28 @@ h1 {
     <span class="s">待加入</span>
   </div>
 
-  <div class="note">旧地址 kindle-chess.html 会自动转到国际象棋。所有项目共用本仓库。</div>
+  <div class="note">旧地址 kindle-chess.html 会自动转到国际象棋。所有项目共用本仓库；各项目在 16:9 横竖屏与 Kindle 比例下均完整显示。</div>
 </div>
+<script>
+(function () {
+  var wrap = document.getElementById("wrap");
+  function fit() {
+    if (!wrap) return;
+    wrap.style.zoom = 1;
+    var w = window.innerWidth || document.documentElement.clientWidth || 375;
+    var h = window.innerHeight || document.documentElement.clientHeight || 667;
+    if (screen && screen.width && screen.width < w) w = screen.width;
+    if (screen && screen.height && screen.height < h) h = screen.height;
+    var sw = Math.max(wrap.scrollWidth || 0, wrap.offsetWidth || 0);
+    var sh = Math.max(wrap.scrollHeight || 0, wrap.offsetHeight || 0);
+    var s = Math.min((w - 2) / (sw || 375), (h - 2) / (sh || 667));
+    if (!(s > 0)) s = 1;
+    wrap.style.zoom = s * 0.99;
+  }
+  window.onresize = fit;
+  window.onorientationchange = fit;
+  fit();
+})();
+</script>
 </body>
 </html>
