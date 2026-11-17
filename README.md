@@ -1,33 +1,57 @@
-# Kindle Chess
+# Kindle 小应用
 
-Kindle 第八代（600×800、16 级灰阶）内置浏览器可运行的单文件国际象棋。
+给 Kindle 第八代（600×800、16 级灰阶、WebKit 531 时代浏览器）等低算力黑白墨水屏设备做的单文件网页小应用。每个项目一个目录，一个 HTML 文件，完全离线，只用点按操作。
 
-- 在线版：https://yelina123.github.io/Kindle-chess/
-- 离线版：下载 `kindle-chess.html`，放入 Kindle 的 `documents` 目录，用内置浏览器打开 `file:///mnt/us/documents/kindle-chess.html`
+在线入口：<https://yelina123.github.io/Kindle-chess/>
 
-## 功能
+## 项目
 
-- 完整规则：王车易位、吃过路兵、升变、将杀、逼和、五十回合、三次重复、子力不足
-- 全点按操作（该浏览器只有 click 事件，没有 touch）
-- 棋钟、暂停、加时、超时判负
-- 棋盘编辑器、FEN 载入
-- 2–3 层浅层分析与胜率条、人机对弈
-- 纯黑白高对比，离线运行
+| 项目 | 目录 | 说明 |
+| --- | --- | --- |
+| 国际象棋 | `chess/` | 完整规则、棋钟与加时、棋盘编辑器、局面分析、人机对弈 |
+| 中国象棋 | 预留 | 稍后加入，不在当前版本中 |
 
-- 自适应视口：按可用宽高等比缩放，手机、平板、Kindle 不横向滚动
+### 国际象棋
+
+- 在线：<https://yelina123.github.io/Kindle-chess/chess/>
+- 旧地址 `kindle-chess.html` 会自动跳转到 `chess/`
+- 6 种棋子完整走法、吃过路兵、升变、易位、将军/将杀/逼和/五十回合/三次重复/子力不足
+- 点棋子再点目标格，全部操作使用点按；升变弹出选择
+- 棋钟：基础时间、每步加时、暂停/继续、给任一方加时
+- 棋盘编辑器：摆子、载入 FEN、设置先手与易位，再开始对局
+- 局面分析：白方视角评分、最佳着法、前三候选、胜率条、节点/耗时；分析深度 2–4 层可选
+- 人机对弈：入门、初级、中级、较强、强 五档；较强/强会思考数秒
+- 断点续局：浏览器 localStorage 保存当前局面与设置
+- 棋盘与棋子：Cburnett 棋具（来自 lichess，CC BY-SA 3.0），已栅格化为内联 PNG
+
+模式说明：工具栏「模式」页单独设置线下对弈/人机对弈、你执哪一方、电脑棋力；对局右侧状态栏顶部始终显示当前模式。切换模式会开始新局。
+
+分析说明：分析模型为内置 `KindleChess Engine v1`，Negamax + Alpha-Beta + 吃子静态搜索，非神经网络；深度 4 在 Kindle 上可能很慢，结果会回退到已完成的最深一层。
+
+## 目录结构
+
+```
+/
+├── index.html          仓库入口（项目列表）
+├── kindle-chess.html   旧链接跳转页
+├── chess/
+│   └── index.html      国际象棋（单文件，自包含）
+├── README.md
+└── .nojekyll
+```
+
+后续新增项目时，在仓库根目录下新建语义化目录（例如 `xiangqi/`），放入该项目的 `index.html`，并在根 `index.html` 的项目列表中加入入口。
 
 ## 兼容
 
-针对 Kindle 第八代内置浏览器（WebKit 531.2–534.26 / Safari 4 时代）编写：ES3/ES5、无 flex/grid/calc、无 touch 事件、无 position:fixed。
-
-## 分析引擎
-
-内置 KindleChess Engine v1：Negamax + Alpha-Beta + 吃子静态搜索；评估为子力 + PST + 兵形 + 象对，非神经网络。分析面板显示胜率条，按引擎评分换算。
+- 目标设备：Kindle 第八代内置浏览器（约 600×800、16 级灰阶、1 GHz 级 CPU）
+- 无 flex/grid/`position:fixed`/`calc()`/`vh`/`vw`；只用 click，不依赖 touch 事件
+- 页面按视口宽高整体等比缩放，手机、平板、Kindle 均不横向滚动
+- 棋子为 96×96 PNG 内联，单文件约 135 KB，不请求外部资源
+- 规则核心已用标准局面的 perft 验证（初始局面 20/400/8902/197281 等）
 
 ## 作者
 
-[yelina123](https://github.com/yelina123)
+yelina123
 
-## 棋子素材
-
-Cburnett chess pieces from lichess lila，CC BY-SA 3.0。
+棋子图形取自 lichess 的 Cburnett 棋具，按 CC BY-SA 3.0 使用。
