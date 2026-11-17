@@ -1350,7 +1350,7 @@ function renderStatus() {
   } else if (GAME.thinking) {
     turn.innerHTML = '电脑思考';
     meta.innerHTML = '第 ' + GAME.pos.full + ' 回合';
-    note.innerHTML = '';
+    note.innerHTML = SET.level >= 3 ? '需数秒' : '';
   } else {
     turn.innerHTML = colorName(GAME.pos.side) + '走棋';
     meta.innerHTML = '第 ' + GAME.pos.full + ' 回合 · ' + tcLabel();
