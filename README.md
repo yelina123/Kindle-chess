@@ -43,6 +43,7 @@
 - 目标设备：Kindle 第八代内置浏览器（约 600×800、16 级灰阶、1 GHz 级 CPU、WebKit 531 时代）。
 - 无 flex/grid/`position:fixed`/`calc()`/`vh`/`vw`；无 `let`/`const`/箭头函数/模板字符串/class；无 WebAssembly、Web Worker、fetch。
 - 只使用 click，不依赖 touch 事件；所有可点按目标至少 44px。
+- 禁用双击与双指缩放，避免 Kindle / 手机浏览器的误触放大。
 - 页面按当前实际视口宽高做整体等比缩放，禁止横向或纵向滚动；16:9 横屏、16:9 竖屏、Kindle 600×800 均能完整显示。
 - 棋子图是 14 枚 44×44 PNG，内联进 HTML；单文件约 124 KB。
 

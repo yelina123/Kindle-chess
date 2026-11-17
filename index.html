@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Kindle 小应用 · yelina123</title>
 <style>
 html, body { margin: 0; padding: 0; }
@@ -12,11 +12,14 @@ body {
   font-size: 15px; line-height: 1.45;
   overflow: hidden;
   -webkit-text-size-adjust: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none; user-select: none;
+  touch-action: manipulation;
 }
 #wrap {
   width: 568px; margin: 0 auto; padding: 18px 8px 26px 8px;
   -webkit-box-sizing: border-box; box-sizing: border-box;
-  -webkit-transform-origin: top center; transform-origin: top center;
+  -webkit-transform-origin: top left; transform-origin: top left;
 }
 #hdr { border-bottom: 2px solid #000; padding-bottom: 10px; }
 h1 {
@@ -84,10 +87,24 @@ h1 {
     if (s > 1) s = 1;
     wrap.style.webkitTransform = "scale(" + s + ")";
     wrap.style.transform = "scale(" + s + ")";
+    wrap.style.marginLeft = Math.max(0, (w - sw * s) / 2) + "px";
+    wrap.style.marginRight = "0px";
   }
   window.onresize = fit;
   window.onorientationchange = function () { setTimeout(fit, 100); };
   fit();
+})();
+</script>
+<script>
+(function () {
+  function stopZoom(e) { if (e && e.preventDefault) e.preventDefault(); }
+  document.addEventListener('gesturestart', stopZoom, false);
+  document.addEventListener('gesturechange', stopZoom, false);
+  document.addEventListener('gestureend', stopZoom, false);
+  document.addEventListener('dblclick', stopZoom, false);
+  document.addEventListener('touchmove', function (e) {
+    if (e && e.touches && e.touches.length > 1) stopZoom(e);
+  }, false);
 })();
 </script>
 </body>

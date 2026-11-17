@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>中国象棋 · Kindle 触控版</title>
 <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23000'/%3E%3Ccircle cx='8' cy='8' r='6.3' fill='%23fff' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E">
 <style>/* ============================================================
@@ -16,6 +16,9 @@ body {
   font-size: 14px; line-height: 1.3;
   overflow: hidden;
   -webkit-text-size-adjust: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none; user-select: none;
+  touch-action: manipulation;
 }
 img { border: 0; }
 button {
@@ -47,7 +50,8 @@ button[disabled] {
   width: 568px; margin: 0 auto; padding: 6px 8px 8px 8px;
   position: relative;
   -webkit-box-sizing: border-box; box-sizing: border-box;
-  -webkit-transform-origin: top center; transform-origin: top center;
+  -webkit-transform-origin: top left; transform-origin: top left;
+  -webkit-touch-callout: none;
 }
 /* ---------- 页头（作者全局显示） ---------- */
 #hdr {
@@ -104,7 +108,7 @@ button[disabled] {
 #diagLayer { z-index: 1; }
 #river { z-index: 1; }
 #cellLayer { z-index: 2; }
-#markLayer { z-index: 4; }
+#markLayer { z-index: 4; width: 0; height: 0; }
 .hline { position: absolute; height: 1px; background: #000; left: 25px; width: 400px; }
 .vline { position: absolute; width: 1px; background: #000; top: 25px; height: 450px; }
 .diag {
@@ -1910,13 +1914,16 @@ function fitScreen() {
   if (!app) return;
   var vw = window.innerWidth || (document.documentElement && document.documentElement.clientWidth) || 600;
   var vh = window.innerHeight || (document.documentElement && document.documentElement.clientHeight) || 800;
-  var w = 568;
+  if (window.screen && screen.width && screen.width < vw) vw = screen.width;
+  var w = app.offsetWidth || 568;
   var h = app.offsetHeight || 680;
   var s = vw / w;
   if (vh / h < s) s = vh / h;
   if (s < 0.25) s = 0.25;
   app.style.webkitTransform = 'scale(' + s + ')';
   app.style.transform = 'scale(' + s + ')';
+  app.style.marginLeft = Math.max(0, (vw - w * s) / 2) + 'px';
+  app.style.marginRight = '0px';
 }
 function fitSoon() { setTimeout(fitScreen, 50); }
 
@@ -2017,6 +2024,18 @@ if (document.addEventListener) {
 } else {
   window.onload = init;
 }
+</script>
+<script>
+(function () {
+  function stopZoom(e) { if (e && e.preventDefault) e.preventDefault(); }
+  document.addEventListener('gesturestart', stopZoom, false);
+  document.addEventListener('gesturechange', stopZoom, false);
+  document.addEventListener('gestureend', stopZoom, false);
+  document.addEventListener('dblclick', stopZoom, false);
+  document.addEventListener('touchmove', function (e) {
+    if (e && e.touches && e.touches.length > 1) stopZoom(e);
+  }, false);
+})();
 </script>
 </body>
 </html>
