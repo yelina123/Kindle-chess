@@ -172,6 +172,28 @@ button {
 .vtitle { float: left; font: 20px/32px Georgia, "Songti SC", serif; }
 .vback { float: right; width: 96px; height: 34px; line-height: 34px; font-size: 11px; }
 
+/* ---------- 编辑器出口选择 ---------- */
+#edChoice {
+  display: none; position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  background: #fff; z-index: 60; padding: 26px 10px 10px 10px;
+  -webkit-box-sizing: border-box; box-sizing: border-box;
+}
+.chTitle { font: 20px/28px Georgia, "Songti SC", serif; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 10px; }
+.chHint { font-size: 11px; line-height: 16px; margin-bottom: 10px; }
+.chBtn {
+  display: block; width: 100%; height: 58px; padding-top: 8px;
+  text-align: center; margin-bottom: 9px;
+  border: 2px solid #000; background: #fff; color: #000;
+  -webkit-box-sizing: border-box; box-sizing: border-box;
+}
+.chBtn b { display: block; font-size: 17px; line-height: 23px; font-weight: normal; }
+.chBtn small { display: block; font-size: 10px; line-height: 14px; }
+.chBtn.main { background: #000; color: #fff; }
+.chRow { height: 56px; margin-top: 12px; }
+.chRow .chBtn { float: left; width: 268px; height: 50px; padding-top: 15px; font-size: 14px; margin: 0 8px 0 0; }
+.chRow .chBtn.last { margin-right: 0; }
+.chFoot { clear: both; margin-top: 10px; font-size: 11px; line-height: 16px; }
+
 /* ---------- 对弈模式 ---------- */
 .modeCards { padding-top: 2px; }
 .modeCard {
@@ -321,6 +343,20 @@ button {
     </div>
   </div>
 
+  <!-- ===== 编辑器出口：选模式 ===== -->
+  <div id="edChoice">
+    <div class="chTitle">用当前局面开始</div>
+    <div class="chHint">棋盘、先手与易位都按编辑器里的设置；棋钟按「设置」里的待用时限重新开始。</div>
+    <button class="chBtn main" id="ecWhite" type="button"><b>人机 · 我执白</b><small>电脑执黑，走黑方</small></button>
+    <button class="chBtn" id="ecBlack" type="button"><b>人机 · 我执黑</b><small>电脑执白，先走</small></button>
+    <button class="chBtn" id="ecLocal" type="button"><b>两人同屏</b><small>同一台设备轮流走</small></button>
+    <div class="chRow">
+      <button class="chBtn" id="ecStay" type="button">继续编辑</button>
+      <button class="chBtn last" id="ecDrop" type="button">放弃修改</button>
+    </div>
+    <div class="chFoot" id="chFoot"></div>
+  </div>
+
   <!-- ===== 对弈模式 ===== -->
   <div id="viewMode" style="display:none">
     <div class="vhead">
@@ -347,8 +383,8 @@ button {
       <div class="clr"></div>
       <div class="mrow">
         <div class="mlabel">引擎</div>
-        <button class="mbtn" id="ce1">云 Stockfish</button>
-        <button class="mbtn" id="ce0">本地</button>
+        <button class="mbtn" id="ne1">神经网络</button>
+        <button class="mbtn" id="ne0">经典本地</button>
       </div>
       <div class="clr"></div>
       <div class="mrow">
@@ -360,7 +396,7 @@ button {
         <button class="mbtn" id="ml4">强</button>
       </div>
       <div class="clr"></div>
-      <div class="mnote">等级越高，本地搜索越深、思考越久；云 Stockfish 未收录时按此档回退。</div>
+      <div class="mnote" id="engineNote">神经网络 = 云端 Stockfish NNUE，需要联网；经典 = 本机搜索，完全离线。</div>
     </div>
     <div class="mnote" id="modeNote">切换模式会开始新局。</div>
     <button class="btn" id="modeStart">以当前模式开始新局</button>
@@ -1261,6 +1297,52 @@ function cloudLookup(pos, multiPv, timeout, cb) {
   }
 }
 
+/* ---------- stockfish.online：任意 FEN 的云端深算 ---------- */
+var SFO = { downUntil: 0, downMs: 3 * 60 * 1000 };
+function sfoDown() { return nowMs() < SFO.downUntil; }
+
+/* 接口返回：evaluation 为白方视角（兵为单位），mate 同为白方视角，
+   bestmove 形如 "bestmove d2d4 ponder e5d4"，continuation 已含第一步 */
+function sfOnlineAnalyze(pos, timeout, cb, playDepth) {
+  if (sfoDown()) { setTimeout(function () { cb(null, 'down'); }, 0); return; }
+  var fen = toFen(pos);
+  var depth = playDepth || (pos.full <= 10 ? 13 : 12);
+  var start = nowMs();
+  var url = 'https://stockfish.online/api/s/v2.php?fen=' + encodeURIComponent(fen) +
+    '&depth=' + depth;
+  httpGetJson(url, timeout, function (err, data) {
+    if (err) {
+      if (err === 'network' || err === 'timeout' || err === 'send' || err === 'xhr') {
+        SFO.downUntil = nowMs() + SFO.downMs;
+      }
+      cb(null, err);
+      return;
+    }
+    if (!data || data.success === false) { cb(null, 'bad'); return; }
+    var cont = String(data.continuation || '').replace(/\s+/g, ' ');
+    cont = cont.replace(/^\s+|\s+$/g, '');
+    var bm = String(data.bestmove || '');
+    var m = /bestmove\s+(\S+)/i.exec(bm);
+    var uci = m ? m[1] : bm.split(' ')[0];
+    if (!uci || uci === 'bestmove') { cb(null, 'bad'); return; }
+    if (!cont) cont = uci;
+    var cp = 0;
+    if (typeof data.evaluation === 'number') cp = Math.round(data.evaluation * 100);
+    var mate = null;
+    if (data.mate !== null && data.mate !== undefined && data.mate !== '') {
+      var mv = parseInt(data.mate, 10);
+      if (!isNaN(mv)) mate = mv;
+    }
+    cb({
+      source: 'sfonline',
+      pvs: [{ moves: cont, cp: cp, mate: mate }],
+      depth: data.depth || depth,
+      knodes: 0,
+      time: nowMs() - start
+    }, null);
+  });
+}
+
 function promoType(ch) {
   if (ch === 'q') return QUEEN;
   if (ch === 'r') return ROOK;
@@ -1349,6 +1431,9 @@ function cloudModel(res) {
   if (res.source === 'tablebase') {
     return '分析模型 Lichess Tablebase · ' + res.pieces + ' 子残局库';
   }
+  if (res.source === 'sfonline') {
+    return '分析模型 stockfish.online · 深度 ' + res.depth + '（云端 Stockfish）';
+  }
   var nodes = res.knodes ? ' · ' + (res.knodes / 1000).toFixed(1) + 'M 节点' : '';
   return '分析模型 Lichess Cloud Eval · Stockfish NNUE · 深度 ' + res.depth + nodes;
 }
@@ -1393,7 +1478,8 @@ function showCloudAnalysisResult(res, pos) {
   } else {
     stats = '白方视角　深度 ' + res.depth +
       (res.knodes ? '　' + (res.knodes / 1000).toFixed(1) + 'M 节点' : '') +
-      '　' + (res.time / 1000).toFixed(1) + ' 秒　来源 Lichess Cloud Eval';
+      '　' + (res.time / 1000).toFixed(1) + ' 秒　来源 ' +
+      (res.source === 'sfonline' ? 'stockfish.online' : 'Lichess Cloud Eval');
   }
   var html = '<div class="panel">' + analysisTitle(cloudModel(res)) +
     '<div class="anRow"><div class="anScore">' + scoreLabel + '</div>' +
@@ -1426,14 +1512,23 @@ var PIECE_SRC = {
 /* ============================================================
    界面与交互（ES3/ES5，兼容 Kindle 第八代内置浏览器）
    ============================================================ */
+/* 算力弱设备（Kindle / 窄屏）默认关闭神经网络引擎；
+   神经网络 = 云端 Stockfish NNUE，经典 = 本机 Negamax。 */
+var WEAK_DEVICE = (function () {
+  var ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
+  if (/Kindle|Silk|KFTT|KFOT|KFSOWI|KFTHWI|KFAPWI/i.test(ua)) return true;
+  var w = window.innerWidth || (document.documentElement && document.documentElement.clientWidth) || 600;
+  return w < 700;
+})();
+
 var SET = {
   base: 5, inc: 3, clockOn: true, refresh: 1,
   vsComputer: false, compSide: 1, level: 2, depth: 3,
-  cloudEngine: true, cloudAnalysis: true,
+  nnEngine: !WEAK_DEVICE, nnAnalysis: !WEAK_DEVICE,
   flipped: false,
   pendBase: 5, pendInc: 3, pendOn: true
 };
-var MODE = { human: true, compSide: 1, level: 2, cloud: true };
+var MODE = { human: true, compSide: 1, level: 2, nn: !WEAK_DEVICE };
 var CLK = { w: 5 * 60000, b: 5 * 60000, run: false, active: 0, last: 0 };
 var GAME = {
   pos: null, startFen: '', hist: [], legal: [], selected: -1,
@@ -1623,7 +1718,9 @@ function togglePause() {
 function modeLabel() {
   if (!SET.vsComputer) return '线下 · 两人同屏';
   var human = SET.compSide === 0 ? '黑' : '白';
-  var engine = SET.cloudEngine ? (cloudDown() ? '本地' : '云') : levelName(SET.level);
+  var engine;
+  if (SET.nnEngine) engine = cloudDown() ? '回退' : '神经';
+  else engine = levelName(SET.level);
   return '人机 · 执' + human + ' · ' + engine;
 }
 
@@ -1639,7 +1736,7 @@ function renderStatus() {
   } else if (GAME.thinking) {
     turn.innerHTML = '电脑思考';
     meta.innerHTML = '第 ' + GAME.pos.full + ' 回合';
-    note.innerHTML = SET.cloudEngine && !cloudDown() ? '云 Stockfish' :
+    note.innerHTML = SET.nnEngine ? (cloudDown() ? '经典回落' : '神经网络') :
       (SET.level >= 3 ? '需数秒' : '');
   } else {
     turn.innerHTML = colorName(GAME.pos.side) + '走棋';
@@ -1879,8 +1976,8 @@ function scheduleComputer() {
       updateButtons();
       return;
     }
-    if (SET.cloudEngine && !cloudDown()) {
-      /* 云 Stockfish 只取当前局面的云端最佳着法；未收录/断网回退本地档位 */
+    if (SET.nnEngine && !cloudDown()) {
+      /* 神经网络引擎：取云端 Stockfish 的最佳着法；未收录/断网回退经典本地 */
       cloudLookup(clonePosition(GAME.pos), 1, 5000, function (res, err) {
         if (gen !== GAME.gen || GAME.result || GAME.pos.side !== SET.compSide) {
           GAME.thinking = false;
@@ -1889,7 +1986,23 @@ function scheduleComputer() {
           return;
         }
         var mv = res ? cloudBestMove(res, GAME.pos) : null;
-        if (!mv) mv = pickComputerMove(GAME.pos, SET.level);
+        if (!mv) {
+          /* 云库没有这个局面：让 stockfish.online 直接算，仍失败才用经典本地 */
+          sfOnlineAnalyze(clonePosition(GAME.pos), 6000, function (sf) {
+            if (gen !== GAME.gen || GAME.result || GAME.pos.side !== SET.compSide) {
+              GAME.thinking = false;
+              renderStatus();
+              updateButtons();
+              return;
+            }
+            var mv2 = sf ? cloudBestMove(sf, GAME.pos) : null;
+            if (!mv2) mv2 = pickComputerMove(GAME.pos, SET.level);
+            GAME.thinking = false;
+            if (mv2) doMove(mv2);
+            else { renderStatus(); updateButtons(); }
+          }, 10);
+          return;
+        }
         GAME.thinking = false;
         if (mv) doMove(mv);
         else { renderStatus(); updateButtons(); }
@@ -2070,42 +2183,61 @@ function runAnalysis() {
   var wasRunning = CLK.run;
   if (wasRunning) { tickOnce(); CLK.run = false; renderClocks(); renderStatus(); }
   var pos = clonePosition(GAME.pos);
-  var useCloud = SET.cloudAnalysis && !cloudDown();
+  var useNN = SET.nnAnalysis;
   var gen = ++ANA.gen;
   ANA.active = true;
   ANA.wasRunning = wasRunning;
 
-  var html = '<div class="panel">' + analysisTitle(useCloud ?
-      '分析模型 Lichess 云 Stockfish（查询中）' : undefined) +
-    '<div class="ptext">' + (useCloud ?
-      '正在查询 Lichess 云端（最多 6 秒）。<br>未收录或网络不可用时，自动回退本地引擎。' :
-      '正在搜索，深度 ' + SET.depth + '。<br>Kindle 运算较慢，可能需要几秒，期间页面不响应。') +
+  var html = '<div class="panel">' + analysisTitle(useNN ?
+      '分析模型 云端（残局库 / Lichess / stockfish.online）' : undefined) +
+    '<div class="ptext">' + (useNN ?
+      '先查残局库与 Lichess 云库；未收录时让 stockfish.online 深算这个局面（最多 12 秒）；都失败才回退本地。' :
+      '正在用经典本地引擎搜索，深度 ' + SET.depth + '。<br>Kindle 运算较慢，可能需要几秒，期间页面不响应。') +
     '</div></div>';
   showPanel(html);
   byId('pClose').onclick = closePanel;
 
   setTimeout(function () {
     if (gen !== ANA.gen) return;
-    if (useCloud) {
-      cloudLookup(pos, 3, 6000, function (res, err) {
-        if (gen !== ANA.gen) return;
+
+    function goLocal(note) {
+      var local = searchPosition(pos, SET.depth, 9000);
+      ANA.active = false;
+      showAnalysisResult(local, pos, undefined, note);
+      finishAnalysis(wasRunning);
+    }
+
+    if (!useNN) {
+      var res0 = searchPosition(pos, SET.depth, 9000);
+      ANA.active = false;
+      showAnalysisResult(res0, pos);
+      finishAnalysis(wasRunning);
+      return;
+    }
+
+    /* 第一步：残局库 / Lichess Cloud Eval */
+    cloudLookup(pos, 3, 6000, function (res, err) {
+      if (gen !== ANA.gen) return;
+      if (res && showCloudAnalysisResult(res, pos)) {
         ANA.active = false;
-        if (res && showCloudAnalysisResult(res, pos)) {
+        finishAnalysis(wasRunning);
+        return;
+      }
+      /* 第二步：stockfish.online 深算任意 FEN */
+      sfOnlineAnalyze(pos, 12000, function (sf, sfErr) {
+        if (gen !== ANA.gen) return;
+        if (sf && showCloudAnalysisResult(sf, pos)) {
+          ANA.active = false;
           finishAnalysis(wasRunning);
           return;
         }
-        var local = searchPosition(pos, SET.depth, 9000);
-        var note = err === 'notfound' ? 'Lichess 云端未收录，已用本地引擎' :
-          (err ? 'Lichess 云端不可用，已用本地引擎' : '云端结果无合法着法，已用本地引擎');
-        showAnalysisResult(local, pos, undefined, note);
-        finishAnalysis(wasRunning);
+        var note;
+        if (err === 'notfound' || sfErr === 'bad') note = '云端未收录此局面，已用本地引擎';
+        else if (err === 'down' && sfErr === 'down') note = '云端暂不可用，已用本地引擎';
+        else note = '云端分析失败，已用本地引擎';
+        goLocal(note);
       });
-    } else {
-      var res = searchPosition(pos, SET.depth, 9000);
-      ANA.active = false;
-      showAnalysisResult(res, pos);
-      finishAnalysis(wasRunning);
-    }
+    });
   }, 80);
 }
 
@@ -2156,6 +2288,7 @@ var PAL_ORDER = [KING, QUEEN, ROOK, BISHOP, KNIGHT, PAWN,
                  KING | 8, QUEEN | 8, ROOK | 8, BISHOP | 8, KNIGHT | 8, PAWN | 8];
 
 function openEditor() {
+  hideEdChoice();
   EDIT.pos = clonePosition(GAME.pos);
   EDIT.brush = PAWN;
   EDIT.flipped = SET.flipped;
@@ -2256,13 +2389,43 @@ function validateEditor(pos) {
   return '';
 }
 
-function applyEditor() {
+/* 离开编辑器：先选这一局怎么下，而不是直接回原模式 */
+function showEdChoice() {
   var msg = validateEditor(EDIT.pos);
-  if (msg) { setEditMsg(msg); return; }
+  if (msg) {
+    byId('edChoice').style.display = 'none';
+    setEditMsg(msg);
+    return;
+  }
+  var c = 0, i, p2;
+  for (i = 0; i < 128; i++) { if (!(i & 0x88) && EDIT.pos.board[i]) c++; }
+  var cast = '';
+  if (EDIT.pos.castling & 1) cast += 'K';
+  if (EDIT.pos.castling & 2) cast += 'Q';
+  if (EDIT.pos.castling & 4) cast += 'k';
+  if (EDIT.pos.castling & 8) cast += 'q';
+  byId('chFoot').innerHTML = '当前局面：' + (EDIT.pos.side === 0 ? '白方' : '黑方') + '先走 · ' +
+    c + ' 子 · 易位 ' + (cast || '无');
+  byId('edChoice').style.display = 'block';
+  fitScreen();
+}
+function hideEdChoice() {
+  byId('edChoice').style.display = 'none';
+}
+function applyEditorWith(kind, compSide) {
+  var msg = validateEditor(EDIT.pos);
+  if (msg) { hideEdChoice(); setEditMsg(msg); return; }
+  hideEdChoice();
+  SET.vsComputer = (kind === 'ai');
+  if (kind === 'ai') SET.compSide = compSide;
   SET.flipped = EDIT.flipped;
+  /* 人机时把自己放在下方 */
+  if (SET.vsComputer) SET.flipped = (SET.compSide === 0);
   showView('game');
   resetGame(clonePosition(EDIT.pos), SET.pendBase, SET.pendInc, SET.pendOn, false);
+  saveState();
 }
+function applyEditor() { showEdChoice(); }
 
 /* ---------- 设置 ---------- */
 var PRESETS = [[1, 0], [3, 0], [3, 2], [5, 0], [5, 3], [10, 0],
@@ -2303,20 +2466,26 @@ function renderSettings() {
   html += '<div class="sect"><div class="sectTitle">对弈模式</div>' +
     '<div class="note">线下对弈 / 人机对弈、你执哪一方、电脑棋力，统一在工具栏「模式」页设置；模式设置只影响新局。</div></div>';
 
+  html += '<div class="sect"><div class="sectTitle">引擎</div>' +
+    segRow('人机引擎', [['nn1', '神经网络', SET.nnEngine], ['nn0', '经典本地', !SET.nnEngine]]) +
+    segRow('局面分析', [['an1', '神经网络', SET.nnAnalysis], ['an0', '经典本地', !SET.nnAnalysis]]) +
+    '<div class="note">神经网络 = 云端 Stockfish（NNUE），需要联网；经典 = 本机 Negamax，完全离线。</div>' +
+    '<div class="note">算力弱的设备（如 Kindle）建议两处都选「经典本地」；两档互相独立，可以只开一个。</div>' +
+    '<div style="margin-top:6px"><button class="btn w180" id="cloudTest">测试云端</button></div><div class="clr"></div>' +
+    '<div class="note" id="cloudTestMsg">云端顺序：残局库 → Lichess Cloud Eval → stockfish.online；都失败才本地。</div></div>';
+
   html += '<div class="sect"><div class="sectTitle">显示与计算</div>' +
     segRow('棋钟刷新', [['rf1', '1 秒', SET.refresh === 1], ['rf5', '5 秒', SET.refresh === 5], ['rf10', '10 秒', SET.refresh === 10]]) +
     segRow('本地深度', [['dp2', '2 层 快', SET.depth === 2], ['dp3', '3 层', SET.depth === 3], ['dp4', '4 层 深', SET.depth === 4]]) +
-    segRow('云分析', [['ca1', '优先', SET.cloudAnalysis], ['ca0', '仅本地', !SET.cloudAnalysis]]) +
-    '<div style="margin-top:6px"><button class="btn w180" id="cloudTest">测试云连接</button></div><div class="clr"></div>' +
-    '<div class="note" id="cloudTestMsg">云分析使用 Lichess Cloud Eval；未收录或断网时自动回退本地。</div>' +
-    '<div class="note">云分析优先；本地深度仅在云端未收录/断网回退时使用。深度 3–4 更准但明显更慢。</div></div>';
+    '<div class="note">本地深度只影响回退到经典引擎时的搜索层数；深度 3–4 更准但明显更慢。</div></div>';
 
   html += '<div class="sect"><div class="sectTitle">说明</div><div class="helpText">' +
     '点自己的棋子选中，再点目标格落子；升变会弹出选择。不支持拖动。' +
     '<br>棋钟在第一次走子后启动；「加时」可给任一方补时，暂停后按「继续棋钟」恢复。' +
     '<br>编辑器支持摆子、载入 FEN、设置先手和易位，再按「开始对局」进入。' +
-    '<br>分析可用 Lichess 云端 Stockfish，未收录时回退本地浅层搜索；结果仅供参考，也会占用棋钟时间。' +
-    '<br>核心对局完全离线；云引擎/云分析需要联网，失败会自动回退本地。可放入 Kindle 的 documents 目录，用内置浏览器打开 file:///mnt/us/documents/kindle-chess.html' +
+    '<br>分析可走云端 Stockfish：先查 Lichess 云库，未收录就让 stockfish.online 深算该局面，都失败才回退本地；结果仅供参考，也会占用棋钟时间。' +
+    '<br>神经网络引擎需要联网；Kindle 等弱设备可在「设置 → 引擎」里关闭，改用经典本地。' +
+    '<br>核心对局完全离线；神经网络引擎与云分析需要联网，失败会自动回退经典本地。可放进 Kindle 的 documents 目录，用内置浏览器直接打开这个 HTML' +
     '<br>棋子图形取自 lichess 的 Cburnett 棋具（CC BY-SA 3.0）。' +
     '</div></div>';
 
@@ -2362,35 +2531,44 @@ function bindSettings() {
   byId('dp2').onclick = function () { SET.depth = 2; renderSettings(); saveState(); };
   byId('dp3').onclick = function () { SET.depth = 3; renderSettings(); saveState(); };
   byId('dp4').onclick = function () { SET.depth = 4; renderSettings(); saveState(); };
-  byId('ca1').onclick = function () { SET.cloudAnalysis = true; renderSettings(); saveState(); };
-  byId('ca0').onclick = function () { SET.cloudAnalysis = false; renderSettings(); saveState(); };
+  byId('nn1').onclick = function () { SET.nnEngine = true; renderMode(); renderSettings(); saveState(); };
+  byId('nn0').onclick = function () { SET.nnEngine = false; renderMode(); renderSettings(); saveState(); };
+  byId('an1').onclick = function () { SET.nnAnalysis = true; renderSettings(); saveState(); };
+  byId('an0').onclick = function () { SET.nnAnalysis = false; renderSettings(); saveState(); };
   byId('cloudTest').onclick = testCloud;
 }
 
 function testCloud() {
   var msg = byId('cloudTestMsg');
   if (!msg) return;
-  msg.innerHTML = '正在连接 Lichess 云端…';
+  msg.innerHTML = '正在测试：残局库 / Lichess 云库…';
   CLOUD.downUntil = 0;
   cloudLookup(newPosition(), 1, 6000, function (res, err) {
     if (res) {
-      msg.innerHTML = '云端可用 · ' + (res.source === 'tablebase' ? '残局库' :
+      msg.innerHTML = 'Lichess 可用 · ' + (res.source === 'tablebase' ? '残局库' :
         ('深度 ' + res.depth + ' · ' + (res.time / 1000).toFixed(1) + ' 秒')) +
-        ' · 人机对战与云分析可用';
-    } else {
-      msg.innerHTML = '云端暂不可用：' + (err === 'notfound' ? '该局面未收录' :
-        (err === 'down' ? '刚失败过，稍后再试' : '网络或服务失败')) + '；已保留本地回退。';
+        ' · 神经网络人机可用';
+      return;
     }
+    msg.innerHTML = 'Lichess 未收录或不可用，正在试 stockfish.online…';
+    sfOnlineAnalyze(newPosition(), 12000, function (sf, sfErr) {
+      if (sf) {
+        msg.innerHTML = 'stockfish.online 可用 · 深度 ' + sf.depth + ' · ' +
+          (sf.time / 1000).toFixed(1) + ' 秒 · 任意局面都能云端分析';
+      } else {
+        msg.innerHTML = '云端暂不可用（' + (sfErr || err || '未知') +
+          '）；人机与分析的「经典本地」仍可离线使用。';
+      }
+    });
   });
 }
-
 
 /* ---------- 对弈模式页 ---------- */
 function openMode() {
   MODE.human = !SET.vsComputer;
   MODE.compSide = SET.compSide;
   MODE.level = SET.level;
-  MODE.cloud = SET.cloudEngine;
+  MODE.nn = SET.nnEngine;
   showView('mode');
   renderMode();
 }
@@ -2402,9 +2580,9 @@ function renderMode() {
   byId('modeCpuOpts').style.display = MODE.human ? 'none' : 'block';
   byId('msWhite').className = 'mbtn' + (MODE.compSide === 1 ? ' on' : '');
   byId('msBlack').className = 'mbtn' + (MODE.compSide === 0 ? ' on' : '');
-  byId('ce1').className = 'mbtn' + (MODE.cloud ? ' on' : '');
-  byId('ce0').className = 'mbtn' + (MODE.cloud ? '' : ' on');
-  byId('mlabelLevel').innerHTML = MODE.cloud ? '回退棋力' : '电脑棋力';
+  byId('ne1').className = 'mbtn' + (MODE.nn ? ' on' : '');
+  byId('ne0').className = 'mbtn' + (MODE.nn ? '' : ' on');
+  byId('mlabelLevel').innerHTML = MODE.nn ? '回落棋力' : '电脑棋力';
   for (i = 0; i < 5; i++) {
     byId('ml' + i).className = 'mbtn' + (MODE.level === i ? ' on' : '');
   }
@@ -2412,9 +2590,12 @@ function renderMode() {
     '两人同屏：双方轮流在同一台设备上走棋。' :
     '人机：你执' + (MODE.compSide === 1 ? '白' : '黑') + '，电脑执' +
     (MODE.compSide === 1 ? '黑' : '白') + '。' +
-    (MODE.cloud ?
-      '<br>引擎：Lichess 云 Stockfish；未收录或断网时按回退棋力本地走。' :
-      '<br>引擎：本地 KindleChess。' + (MODE.level >= 3 ? ' 较强/强档会思考数秒。' : ''));
+    (MODE.nn ?
+      '<br>引擎：神经网络（云端 Stockfish）；未收录或断网时按「回落棋力」本地走。' :
+      '<br>引擎：经典本地（Negamax）。' + (MODE.level >= 3 ? ' 较强/强档会思考数秒。' : ''));
+  byId('engineNote').innerHTML = WEAK_DEVICE ?
+    '当前设备算力偏弱（Kindle 或窄屏），建议保持「经典本地」；神经网络需要联网且更慢。' :
+    '神经网络 = 云端 Stockfish NNUE，需要联网；经典 = 本机搜索，完全离线。';
   byId('modeStart').innerHTML = MODE.human ? '以线下模式开始新局' : '以人机模式开始新局';
   byId('modeMsg').innerHTML = '';
   fitScreen();
@@ -2424,7 +2605,7 @@ function applyMode() {
   SET.vsComputer = !MODE.human;
   SET.compSide = MODE.compSide;
   SET.level = MODE.level;
-  SET.cloudEngine = MODE.cloud;
+  SET.nnEngine = MODE.nn;
   showView('game');
   startFresh();
   saveState();
@@ -2467,7 +2648,7 @@ function saveState() {
       SET.base + ',' + SET.inc + ',' + (SET.clockOn ? '1' : '0') + ',' +
       (SET.vsComputer ? '1' : '0') + ',' + SET.compSide + ',' + SET.level + ',' +
       SET.refresh + ',' + SET.depth + ',' + (SET.flipped ? '1' : '0') + ',' +
-      (SET.cloudEngine ? '1' : '0') + ',' + (SET.cloudAnalysis ? '1' : '0');
+      (SET.nnEngine ? '1' : '0') + ',' + (SET.nnAnalysis ? '1' : '0');
     localStorage.setItem(STORE_KEY, s);
   } catch (e) {}
 }
@@ -2490,8 +2671,8 @@ function restoreGame(data) {
   SET.depth = parseInt(setup[7], 10);
   if (isNaN(SET.depth) || SET.depth < 2 || SET.depth > 4) SET.depth = 3;
   SET.flipped = setup[8] === '1';
-  SET.cloudEngine = setup[9] !== '0';
-  SET.cloudAnalysis = setup[10] !== '0';
+  SET.nnEngine = setup[9] !== '0';
+  SET.nnAnalysis = setup[10] !== '0';
 
   resetGame(pos, base, inc, on, true);
 
@@ -2585,15 +2766,20 @@ function bindStatic() {
   byId('modeCpu').onclick = function () { MODE.human = false; renderMode(); };
   byId('msWhite').onclick = function () { MODE.compSide = 1; renderMode(); };
   byId('msBlack').onclick = function () { MODE.compSide = 0; renderMode(); };
-  byId('ce1').onclick = function () { MODE.cloud = true; renderMode(); };
-  byId('ce0').onclick = function () { MODE.cloud = false; renderMode(); };
+  byId('ne1').onclick = function () { MODE.nn = true; renderMode(); };
+  byId('ne0').onclick = function () { MODE.nn = false; renderMode(); };
   for (i = 0; i < 5; i++) {
     (function (n) { byId('ml' + n).onclick = function () { MODE.level = n; renderMode(); }; })(i);
   }
   byId('modeStart').onclick = applyMode;
   byId('btnPause').onclick = togglePause;
 
-  byId('edBack').onclick = function () { showView('game'); };
+  byId('edBack').onclick = showEdChoice;
+  byId('ecWhite').onclick = function () { applyEditorWith('ai', 1); };
+  byId('ecBlack').onclick = function () { applyEditorWith('ai', 0); };
+  byId('ecLocal').onclick = function () { applyEditorWith('local', 1); };
+  byId('ecStay').onclick = hideEdChoice;
+  byId('ecDrop').onclick = function () { hideEdChoice(); showView('game'); };
   byId('edSideW').onclick = function () { EDIT.pos.side = 0; renderEditor(); };
   byId('edSideB').onclick = function () { EDIT.pos.side = 1; renderEditor(); };
   byId('edCW').onclick = function () { toggleCastle(1); };
