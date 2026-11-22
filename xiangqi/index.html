@@ -366,7 +366,7 @@ button[disabled] {
         <div id="clockA" class="clock"><div id="clockALabel" class="clabel">黑方</div><div id="clockATime" class="ctime">10:00</div></div>
         <div id="clockB" class="clock"><div id="clockBLabel" class="clabel">红方</div><div id="clockBTime" class="ctime">10:00</div></div>
         <div id="moves"><div id="movesTitle">着法</div><div id="moveList"></div></div>
-        <div id="offTips">无棋钟模式<br>不计时<br>不判超时<br>可悔棋<br>可回看<br>可分析<br>想计时开「棋钟」</div>
+        <div id="offTips">无棋钟模式<br>不计时<br>不判超时<br>可悔棋<br>可回看<br>可分析<br>想计时到「新局」选有棋钟</div>
       </div>
       <div class="clr"></div>
     </div>
@@ -436,7 +436,7 @@ button[disabled] {
         <button id="timeOff" type="button" class="optBtn sideItem last">无限时</button>
       </div>
     </div>
-    <div class="setBlock">
+    <div class="setBlock" id="timeLimits">
       <div class="lab">时限</div>
       <div class="hint">预设与自定义二选一；自定义填基础时间与每步加秒，改完开新局生效</div>
       <button id="timePresetBtn" type="button" class="toggleBtn sel">预设</button>
@@ -1532,6 +1532,18 @@ function renderClocks() {
     $('clockA').className = 'clock';
     $('clockB').className = 'clock';
   }
+  var cb = $('btnClock');
+  if (cb) {
+    if (onClk) {
+      cb.className = 'btn last';
+      cb.disabled = false;
+      cb.innerHTML = '棋钟';
+    } else {
+      cb.className = 'btn last off';
+      cb.disabled = true;
+      cb.innerHTML = '无限时';
+    }
+  }
 }
 function renderMoves() {
   var arr = GAME.hist, i, from, html = '';
@@ -2111,6 +2123,7 @@ function syncModeView() {
   $('timeOn').className = 'optBtn sideItem' + (MODE_TEMP.clockOn ? ' sel' : '');
   $('timeOff').className = 'optBtn sideItem last' + (MODE_TEMP.clockOn ? '' : ' sel');
   syncTimeControls();
+  $('timeLimits').style.display = MODE_TEMP.clockOn ? 'block' : 'none';
   $('modeStart').innerHTML = MODE_TEMP.mode === 'ai' ? '开始人机对弈' : '开始线下对弈';
   $('modeNotes').innerHTML = MODE_TEMP.mode === 'ai'
     ? '你执' + (MODE_TEMP.humanSide === RED ? '红' : '黑') + '，电脑棋力「' + LEVEL_NAMES[MODE_TEMP.level] +
@@ -2432,7 +2445,11 @@ function bindUI() {
   on($('btnAnalyse'), 'click', doAnalyse);
   on($('btnUndo'), 'click', undoMoveAction);
   on($('btnFlip'), 'click', toggleFlip);
-  on($('btnClock'), 'click', function () { if (GAME.view === 'game') openClockPanel(); });
+  on($('btnClock'), 'click', function () {
+    if (GAME.view !== 'game') return;
+    if (!SET.clockOn) return;          /* 无限时：没有棋钟面板 */
+    openClockPanel();
+  });
   on($('btnMode'), 'click', openModeView);
   on($('btnHint'), 'click', doHint);
   on($('btnRules'), 'click', function () { showView('rules'); });
