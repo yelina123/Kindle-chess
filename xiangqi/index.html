@@ -400,7 +400,7 @@ button[disabled] {
     <div id="modeLocal" class="modeCard sel">
       <b>线下对弈</b>
       <span>同一台设备，两人轮流落子</span>
-      <em>无电脑介入 · 棋钟照常运行</em>
+      <em>无电脑介入 · 可开关棋钟</em>
     </div>
     <div id="modeAI" class="modeCard last">
       <b>人机对弈</b>
@@ -426,7 +426,9 @@ button[disabled] {
         <button id="lvl5" type="button" class="optBtn levelItem last">强+</button>
       </div>
       <div id="levelNotes"></div>
-      <div class="optLabel">计时方式</div>
+    </div>
+    <div id="timeOptions">
+      <div class="optLabel">计时方式（人机、线下对弈都可用）</div>
       <div class="optRow">
         <button id="timeOn" type="button" class="optBtn sideItem sel">有棋钟</button>
         <button id="timeOff" type="button" class="optBtn sideItem last">无限时</button>
@@ -446,22 +448,25 @@ button[disabled] {
       <p>设置保存到本机；已有对局不会被清空。需要按新时限重开时，用下面的“以新时限开新局”。</p>
     </div>
     <div class="setBlock">
-      <div class="lab">时限预设</div>
-      <div class="hint">基础时间 + 每步加秒</div>
-      <button id="preset0" type="button" class="presetBtn">5 + 0</button>
-      <button id="preset1" type="button" class="presetBtn">10 + 0</button>
-      <button id="preset2" type="button" class="presetBtn sel">10 + 5</button>
-      <button id="preset3" type="button" class="presetBtn">15 + 10</button>
-      <button id="preset4" type="button" class="presetBtn">30 + 0</button>
+      <div class="lab">时限</div>
+      <div class="hint">预设与自定义二选一；自定义可填任意基础时间与每步加秒</div>
+      <button id="timePresetBtn" type="button" class="toggleBtn sel">预设</button>
+      <button id="timeCustomBtn" type="button" class="toggleBtn">自定义</button>
       <div class="clr"></div>
-    </div>
-    <div class="setBlock">
-      <div class="lab">自定义</div>
-      <div class="hint">基础时间（分钟） / 每步加秒（秒）</div>
-      <div class="setInline">
-        基础 <input id="setBase" type="text" class="setInput timeInput" value="10"> 分
-        &nbsp;+&nbsp;
-        <input id="setInc" type="text" class="setInput timeInput" value="5"> 秒/步
+      <div id="presetRow">
+        <button id="preset0" type="button" class="presetBtn">5 + 0</button>
+        <button id="preset1" type="button" class="presetBtn">10 + 0</button>
+        <button id="preset2" type="button" class="presetBtn sel">10 + 5</button>
+        <button id="preset3" type="button" class="presetBtn">15 + 10</button>
+        <button id="preset4" type="button" class="presetBtn">30 + 0</button>
+        <div class="clr"></div>
+      </div>
+      <div id="customRow" class="hide">
+        <div class="setInline">
+          基础 <input id="setBase" type="text" class="setInput timeInput" value="10"> 分
+          &nbsp;+&nbsp;
+          <input id="setInc" type="text" class="setInput timeInput" value="5"> 秒/步
+        </div>
       </div>
     </div>
     <div class="setBlock">
@@ -474,9 +479,17 @@ button[disabled] {
     <div class="setBlock">
       <div class="lab">墨水屏刷新</div>
       <div class="hint">倒计时数字每隔几秒更新一次；越慢越省电。</div>
-      <button id="refresh1" type="button" class="toggleBtn">每秒</button>
-      <button id="refresh5" type="button" class="toggleBtn sel">每 5 秒</button>
+      <button id="refresh1" type="button" class="toggleBtn sel">每秒</button>
+      <button id="refresh5" type="button" class="toggleBtn">每 5 秒</button>
       <button id="refresh10" type="button" class="toggleBtn">每 10 秒</button>
+      <div class="clr"></div>
+    </div>
+    <div class="setBlock">
+      <div class="lab">分析引擎</div>
+      <div class="hint">自动按设备选档；轻量更快更省电；强力搜得更深，适合手机/电脑，Kindle 上会明显变慢</div>
+      <button id="anaAuto" type="button" class="toggleBtn sel">自动</button>
+      <button id="anaLight" type="button" class="toggleBtn">轻量</button>
+      <button id="anaStrong" type="button" class="toggleBtn">强力</button>
       <div class="clr"></div>
     </div>
     <div class="btnRow">
@@ -1203,7 +1216,8 @@ function strongDevice() {
 var STATE_KEY = 'KINDLE_XIANGQI_V2';
 var SETTINGS_KEY = 'KINDLE_XIANGQI_SETTINGS_V2';
 
-var SET = { base: 600, inc: 5, clockOn: true, refresh: 5, level: 2 };
+var SET = { base: 600, inc: 5, clockOn: true, refresh: 1, level: 2,
+            timeMode: 'preset', analyseMode: 0, sv: 2 };
 
 var GAME = {
   pos: null,
@@ -1487,6 +1501,7 @@ function renderStatus() {
   else if (GAME.thinking) setText('noteText', '本机引擎');
   else if (check) setText('noteText', '将军');
   else if (GAME.selected >= 0) setText('noteText', '已选 ' + pieceName(view.board[GAME.selected]));
+  else if (SET.clockOn && !GAME.hist.length) setText('noteText', '第一步落子后开始计时');
   else setText('noteText', SET.clockOn ? '点选棋子，再点目标' : '无限时 · 点选棋子');
 }
 
@@ -1510,7 +1525,7 @@ function renderClocks() {
   a.className = 'clock' + (activeTop ? ' active' : '');
   b.className = 'clock' + (activeBot ? ' active' : '');
   var pb = $('pauseBtn');
-  if (SET.clockOn && !GAME.result) {
+  if (SET.clockOn && !GAME.result && GAME.hist && GAME.hist.length) {
     pb.style.display = 'block';
     pb.innerHTML = GAME.paused ? '继续' : '暂停';
   } else {
@@ -1649,6 +1664,7 @@ function onCellClick(sq) {
 /* ---------- 棋钟 ---------- */
 function flushClock() {
   if (GAME.review >= 0) return true;
+  if (!GAME.hist || !GAME.hist.length) return true;
   if (!SET.clockOn || !GAME.running || GAME.paused || GAME.result) return true;
   var now = nowMs();
   var elapsed = now - GAME.lastTs;
@@ -1666,6 +1682,7 @@ function flushClock() {
 }
 function tickClock() {
   if (GAME.review >= 0) return;
+  if (!GAME.hist || !GAME.hist.length) return;
   if (!SET.clockOn || !GAME.running || GAME.paused || GAME.result) return;
   var now = nowMs();
   var elapsed = now - GAME.lastTs;
@@ -1692,7 +1709,7 @@ function resetClocks() {
   GAME.clocks.black = SET.base * 1000;
   GAME.lastTs = nowMs();
   GAME.lastDisplay = GAME.lastTs;
-  GAME.running = SET.clockOn;
+  GAME.running = false;          /* 第一步落子后才开始计时 */
   GAME.paused = false;
 }
 function togglePause() {
@@ -1711,7 +1728,7 @@ function togglePause() {
     GAME.legalForSel = [];
   } else {
     GAME.paused = false;
-    GAME.running = SET.clockOn;
+    GAME.running = !!(SET.clockOn && GAME.hist.length);
     GAME.lastTs = nowMs();
     maybeAI();
   }
@@ -1759,7 +1776,7 @@ function executeMove(m, byAI) {
     GAME.clocks[moverKey] += SET.inc * 1000;
   }
   GAME.lastTs = nowMs();
-  GAME.running = SET.clockOn && !GAME.result;
+  GAME.running = !!(SET.clockOn && !GAME.result && GAME.hist.length);
   render();
   saveState();
   if (m.cap && pieceType(m.cap) === GENERAL) {
@@ -1868,7 +1885,7 @@ function undoMoveAction() {
   for (i = 0; i < count; i++) undoOne();
   GAME.result = null;
   GAME.paused = false;
-  GAME.running = SET.clockOn;
+  GAME.running = !!(SET.clockOn && GAME.hist.length);
   GAME.lastTs = nowMs();
   GAME.selected = -1;
   GAME.legalForSel = [];
@@ -1950,12 +1967,19 @@ function scoreText(sc) {
   if (sc < -(XQ_MATE - 1000)) return '黑方将杀';
   return (sc >= 0 ? '+' : '') + (sc / 100).toFixed(2);
 }
+function analyseProfile() {
+  if (SET.analyseMode === 1) return { depth: 4, budget: 6000, label: '轻量档（深度 4 / 6 秒）' };
+  if (SET.analyseMode === 2) return { depth: 7, budget: 20000, label: '强力档（深度 7 / 20 秒）' };
+  return strongDevice()
+    ? { depth: 6, budget: 15000, label: '自动 · 强设备档（深度 6 / 15 秒）' }
+    : { depth: 5, budget: 8000, label: '自动 · Kindle 档（深度 5 / 8 秒）' };
+}
 function doAnalyse() {
   if (!GAME.pos || GAME.thinking || GAME.hintThinking || GAME.analyseBusy) return;
   var pos = clonePosition(curView());
-  var strong = strongDevice();
-  var depth = strong ? 6 : 5;
-  var budget = strong ? 15000 : 8000;
+  var prof = analyseProfile();
+  var depth = prof.depth;
+  var budget = prof.budget;
   var wasRun = GAME.running && !GAME.paused;
   if (wasRun) flushClock();
   GAME.running = false;
@@ -1984,12 +2008,12 @@ function doAnalyse() {
       addPanelBtn('关闭', 'small', closePanel);
       return;
     }
-    showAnalysis(pos, res, strong, xqNow() - t0);
+    showAnalysis(pos, res, prof, xqNow() - t0);
     render();
     maybeAI();
   }, 80);
 }
-function showAnalysis(pos, res, strong, wall) {
+function showAnalysis(pos, res, prof, wall) {
   var side = pos.side, i, m, sc;
   var redScore = side === RED ? res.score : -res.score;
   var p = winPct(redScore);
@@ -1999,7 +2023,7 @@ function showAnalysis(pos, res, strong, wall) {
   var npsText = nps >= 1000 ? (Math.round(nps / 1000) + 'k') : ('' + nps);
   var html = '';
   html += '<div class="anMeta">引擎　本机 v2 · Alpha-Beta + 置换表 + 静态搜索 · 非神经网络</div>';
-  html += '<div class="anMeta">强度　' + (strong ? '强设备档（深度 6 / 15 秒）' : 'Kindle 档（深度 5 / 8 秒）') +
+  html += '<div class="anMeta">强度　' + prof.label +
     ' · ' + (res.aborted ? '达到预算上限' : '搜索完成') + '</div>';
   html += '<div class="anMeta">节点 ' + nodes + '　耗时 ' + (ms / 1000).toFixed(1) + ' 秒　' + npsText + ' 节点/秒</div>';
   html += '<div class="anSep"></div>';
@@ -2099,9 +2123,27 @@ function syncSettingsView() {
   $('setInc').value = '' + SET.inc;
   var i;
   for (i = 0; i < 5; i++) $('preset' + i).className = 'presetBtn';
-  markPreset(SET.base, SET.inc);
+  if (SET.timeMode === 'custom') {
+    $('presetRow').className = 'hide';
+    $('customRow').className = '';
+  } else {
+    $('presetRow').className = '';
+    $('customRow').className = 'hide';
+    if (!presetIndex(SET.base, SET.inc)) SET.base = 600, SET.inc = 5;
+    $('setBase').value = '' + Math.round(SET.base / 60);
+    $('setInc').value = '' + SET.inc;
+    markPreset(SET.base, SET.inc);
+  }
+  $('timePresetBtn').className = 'toggleBtn' + (SET.timeMode === 'custom' ? '' : ' sel');
+  $('timeCustomBtn').className = 'toggleBtn' + (SET.timeMode === 'custom' ? ' sel' : '');
   syncClockButtons();
   syncRefreshButtons();
+  syncAnalyseButtons();
+}
+function syncAnalyseButtons() {
+  $('anaAuto').className = 'toggleBtn' + (SET.analyseMode === 0 ? ' sel' : '');
+  $('anaLight').className = 'toggleBtn' + (SET.analyseMode === 1 ? ' sel' : '');
+  $('anaStrong').className = 'toggleBtn' + (SET.analyseMode === 2 ? ' sel' : '');
 }
 function syncClockButtons() {
   $('clockOnBtn').className = 'toggleBtn' + (SET.clockOn ? ' sel' : '');
@@ -2112,12 +2154,18 @@ function syncRefreshButtons() {
   $('refresh5').className = 'toggleBtn' + (SET.refresh === 5 ? ' sel' : '');
   $('refresh10').className = 'toggleBtn' + (SET.refresh === 10 ? ' sel' : '');
 }
-function markPreset(base, inc) {
-  var vals = [[300, 0, 'preset0'], [600, 0, 'preset1'], [600, 5, 'preset2'], [900, 10, 'preset3'], [1800, 0, 'preset4']];
-  var i;
+function presetIndex(base, inc) {
+  var vals = [[300, 0], [600, 0], [600, 5], [900, 10], [1800, 0]], i;
   for (i = 0; i < vals.length; i++) {
-    if (vals[i][0] === base && vals[i][1] === inc) $(vals[i][2]).className = 'presetBtn sel';
+    if (vals[i][0] === base && vals[i][1] === inc) return i + 1;
   }
+  return 0;
+}
+function markPreset(base, inc) {
+  if (SET.timeMode === 'custom') return;
+  var idx = presetIndex(base, inc), i;
+  for (i = 0; i < 5; i++) $(('preset' + i)).className = 'presetBtn';
+  if (idx) $(('preset' + (idx - 1))).className = 'presetBtn sel';
 }
 function readSettingsInputs() {
   var b = Math.round(parseFloat($('setBase').value) * 60);
@@ -2129,10 +2177,9 @@ function readSettingsInputs() {
   SET.inc = inc;
 }
 function applySettings(showNote) {
-  readSettingsInputs();
-  GAME.running = SET.clockOn && !GAME.result;
-  if (SET.clockOn && !GAME.paused && !GAME.result && !GAME.running) GAME.running = true;
-  if (SET.clockOn) GAME.lastTs = nowMs();
+  if (SET.timeMode === 'custom') readSettingsInputs();
+  GAME.running = !!(SET.clockOn && !GAME.result && GAME.hist && GAME.hist.length);
+  if (!GAME.paused) GAME.lastTs = nowMs();
   if (!SET.clockOn) { GAME.running = false; GAME.paused = false; }
   saveSettings();
   saveState();
@@ -2154,10 +2201,13 @@ function loadSettings() {
     if (obj.base) SET.base = clamp(toInt(obj.base, 600), 60, 10800);
     if (obj.inc !== undefined) SET.inc = clamp(toInt(obj.inc, 0), 0, 60);
     if (obj.clockOn !== undefined) SET.clockOn = !!obj.clockOn;
-    if (obj.refresh) SET.refresh = toInt(obj.refresh, 5);
+    if (obj.refresh && obj.sv >= 2) SET.refresh = toInt(obj.refresh, 1);
+    if (obj.timeMode === 'custom' || obj.timeMode === 'preset') SET.timeMode = obj.timeMode;
+    if (obj.analyseMode !== undefined) SET.analyseMode = clamp(toInt(obj.analyseMode, 0), 0, 2);
     if (obj.level !== undefined) SET.level = clamp(toInt(obj.level, 2), 0, 5);
   }
-  SET.refresh = SET.refresh === 1 || SET.refresh === 5 || SET.refresh === 10 ? SET.refresh : 5;
+  SET.sv = 2;
+  SET.refresh = SET.refresh === 1 || SET.refresh === 5 || SET.refresh === 10 ? SET.refresh : 1;
   SET.level = clamp(SET.level, 0, 5);
 }
 
@@ -2232,17 +2282,17 @@ function loadState() {
   GAME.hintThinking = false;
   GAME.hintMove = null;
   GAME.paused = false;
-  GAME.running = SET.clockOn && !GAME.result;
+  GAME.running = !!(SET.clockOn && !GAME.result && GAME.hist && GAME.hist.length);
   GAME.lastTs = nowMs();
   GAME.gen++;
   if (obj.settings) {
     if (obj.settings.base) SET.base = clamp(toInt(obj.settings.base, 600), 60, 10800);
     if (obj.settings.inc !== undefined) SET.inc = clamp(toInt(obj.settings.inc, 0), 0, 60);
     if (obj.settings.clockOn !== undefined) SET.clockOn = !!obj.settings.clockOn;
-    if (obj.settings.refresh) SET.refresh = toInt(obj.settings.refresh, 5);
+    if (obj.settings.refresh && obj.settings.sv >= 2) SET.refresh = toInt(obj.settings.refresh, 1);
     if (obj.settings.level !== undefined) SET.level = clamp(toInt(obj.settings.level, 2), 0, 5);
   }
-  GAME.running = SET.clockOn && !GAME.result;
+  GAME.running = !!(SET.clockOn && !GAME.result && GAME.hist && GAME.hist.length);
   GAME.lastTs = nowMs();
   return true;
 }
@@ -2275,6 +2325,13 @@ function askNewGame() {
     { label: '开新局', cls: 'small', fn: function () { closePanel(); startNewGame(); showView('game'); } }
   ]);
 }
+function flashClock() {
+  /* 切换棋钟时给墨水屏一个明确的整屏刷新 */
+  var app = $('app');
+  if (!app) return;
+  app.style.visibility = 'hidden';
+  setTimeout(function () { app.style.visibility = ''; }, 60);
+}
 function openClockPanel() {
   var r = fmtClock(GAME.clocks.red), b = fmtClock(GAME.clocks.black);
   var body = '<div>红方 <span class="ptime">' + r + '</span>　黑方 <span class="ptime">' + b + '</span></div>' +
@@ -2291,7 +2348,7 @@ function openClockPanel() {
   if (!SET.clockOn) {
     buttons.push({ label: '开启棋钟', cls: 'small', fn: function () {
       SET.clockOn = true;
-      GAME.running = !GAME.result && !GAME.paused;
+      GAME.running = !!(GAME.hist.length && !GAME.result && !GAME.paused);
       GAME.lastTs = nowMs();
       saveSettings(); saveState();
       closePanel(); render(); openClockPanel();
@@ -2299,6 +2356,14 @@ function openClockPanel() {
   }
   if (SET.clockOn && !GAME.result) {
     buttons.push({ label: GAME.paused ? '继续棋钟' : '暂停棋钟', cls: 'small', fn: function () { closePanel(); togglePause(); openClockPanel(); } });
+    buttons.push({ label: '关闭棋钟', cls: 'small', fn: function () {
+      SET.clockOn = false;
+      GAME.running = false;
+      GAME.paused = false;
+      flashClock();
+      saveSettings(); saveState();
+      closePanel(); render(); openClockPanel();
+    } });
   }
   buttons.push({ label: '设置时限', cls: 'small', fn: function () { closePanel(); openSettingsView(); } });
   buttons.push({ label: '关闭', cls: 'small', fn: closePanel });
@@ -2361,6 +2426,17 @@ function bindUI() {
   on($('modeStart'), 'click', startMode);
   on($('modeCancel'), 'click', function () { showView('game'); });
 
+  on($('timePresetBtn'), 'click', function () {
+    SET.timeMode = 'preset';
+    if (!presetIndex(SET.base, SET.inc)) { SET.base = 600; SET.inc = 5; }
+    $('setBase').value = '' + Math.round(SET.base / 60);
+    $('setInc').value = '' + SET.inc;
+    syncSettingsView();
+  });
+  on($('timeCustomBtn'), 'click', function () { SET.timeMode = 'custom'; syncSettingsView(); });
+  on($('anaAuto'), 'click', function () { SET.analyseMode = 0; syncAnalyseButtons(); saveSettings(); });
+  on($('anaLight'), 'click', function () { SET.analyseMode = 1; syncAnalyseButtons(); saveSettings(); });
+  on($('anaStrong'), 'click', function () { SET.analyseMode = 2; syncAnalyseButtons(); saveSettings(); });
   on($('preset0'), 'click', function () { setPresetInputs(5, 0); });
   on($('preset1'), 'click', function () { setPresetInputs(10, 0); });
   on($('preset2'), 'click', function () { setPresetInputs(10, 5); });
@@ -2381,11 +2457,21 @@ function bindUI() {
   on(window, 'beforeunload', saveState);
 }
 function setPresetInputs(min, inc) {
+  SET.timeMode = 'preset';
+  SET.base = min * 60;
+  SET.inc = inc;
   $('setBase').value = '' + min;
   $('setInc').value = '' + inc;
   var i;
   for (i = 0; i < 5; i++) $('preset' + i).className = 'presetBtn';
+  $('presetRow').className = '';
+  $('customRow').className = 'hide';
+  $('timePresetBtn').className = 'toggleBtn sel';
+  $('timeCustomBtn').className = 'toggleBtn';
   markPreset(min * 60, inc);
+  saveSettings();
+  renderClocks();
+  renderStatus();
 }
 
 /* ---------- 启动 ---------- */
