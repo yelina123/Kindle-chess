@@ -328,6 +328,8 @@ button[disabled] {
 .ptime { font-family: "Courier New", Courier, monospace; font-size: 18px; }
 .addRow { margin-top: 4px; }
 .addBtn { float: left; width: 82px; height: 44px; margin: 3px 4px 0 0; font-size: 11px; }
+.clockMsg { border-left: 3px solid #000; padding-left: 6px; margin-top: 4px; }
+.clockTip { clear: both; font-size: 9px; line-height: 13px; margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -391,11 +393,11 @@ button[disabled] {
     </div>
   </div>
 
-  <!-- ===== 视图：选择模式 ===== -->
+  <!-- ===== 视图：开新局（模式 / 执子 / 棋力 / 计时 / 时限） ===== -->
   <div id="viewMode" class="view hide">
     <div class="vhead">
-      <h2>选择对弈模式</h2>
-      <p>线下双人轮流走；人机由本机引擎应招。棋力分六档，「强 / 强+」需要较强设备。</p>
+      <h2>开新局</h2>
+      <p>模式、棋力、计时、时限都在这页；「开始」按这里设置重开一局，棋钟按时限重置。</p>
     </div>
     <div id="modeLocal" class="modeCard sel">
       <b>线下对弈</b>
@@ -405,7 +407,7 @@ button[disabled] {
     <div id="modeAI" class="modeCard last">
       <b>人机对弈</b>
       <span>与本地引擎对弈，六档棋力</span>
-      <em>离线可用 · 强+ 档建议手机/电脑</em>
+      <em>离线可用 · 强+ 建议手机/电脑</em>
     </div>
     <div class="clr"></div>
     <div id="aiOptions">
@@ -428,28 +430,15 @@ button[disabled] {
       <div id="levelNotes"></div>
     </div>
     <div id="timeOptions">
-      <div class="optLabel">计时方式（人机、线下对弈都可用）</div>
+      <div class="optLabel">计时方式</div>
       <div class="optRow">
         <button id="timeOn" type="button" class="optBtn sideItem sel">有棋钟</button>
         <button id="timeOff" type="button" class="optBtn sideItem last">无限时</button>
       </div>
     </div>
-    <div id="modeNotes">人机模式中，电脑用当前局的棋钟思考；Kindle 上会根据时间预算自动结束搜索。</div>
-    <div class="btnRow">
-      <button id="modeStart" type="button" class="btn wide">开始线下对弈</button>
-      <button id="modeCancel" type="button" class="btn small">返回</button>
-    </div>
-  </div>
-
-  <!-- ===== 视图：棋钟与显示设置 ===== -->
-  <div id="viewSettings" class="view hide">
-    <div class="vhead">
-      <h2>棋钟与显示</h2>
-      <p>设置保存到本机；已有对局不会被清空。需要按新时限重开时，用下面的“以新时限开新局”。</p>
-    </div>
     <div class="setBlock">
       <div class="lab">时限</div>
-      <div class="hint">预设与自定义二选一；自定义可填任意基础时间与每步加秒</div>
+      <div class="hint">预设与自定义二选一；自定义填基础时间与每步加秒，改完开新局生效</div>
       <button id="timePresetBtn" type="button" class="toggleBtn sel">预设</button>
       <button id="timeCustomBtn" type="button" class="toggleBtn">自定义</button>
       <div class="clr"></div>
@@ -469,12 +458,18 @@ button[disabled] {
         </div>
       </div>
     </div>
-    <div class="setBlock">
-      <div class="lab">棋钟</div>
-      <div class="hint">关闭 = 无棋钟模式：不显示、不计时，适合随手拆解。对局中可从「棋钟」面板重新开启。</div>
-      <button id="clockOnBtn" type="button" class="toggleBtn sel">开启棋钟</button>
-      <button id="clockOffBtn" type="button" class="toggleBtn">关闭棋钟</button>
-      <div class="clr"></div>
+    <div id="modeNotes">人机模式中，电脑用当前局的棋钟思考；Kindle 上会根据时间预算自动结束搜索。</div>
+    <div class="btnRow">
+      <button id="modeStart" type="button" class="btn wide">开始线下对弈</button>
+      <button id="modeCancel" type="button" class="btn small">返回</button>
+    </div>
+  </div>
+
+  <!-- ===== 视图：显示与引擎设置 ===== -->
+  <div id="viewSettings" class="view hide">
+    <div class="vhead">
+      <h2>显示与引擎</h2>
+      <p>这里只管墨水屏刷新与模型档位，保存到本机；时限和棋钟在「新局」页，对局中的棋钟面板也能加减时。</p>
     </div>
     <div class="setBlock">
       <div class="lab">墨水屏刷新</div>
@@ -494,7 +489,6 @@ button[disabled] {
     </div>
     <div class="btnRow">
       <button id="btnSaveSettings" type="button" class="btn mid">保存设置</button>
-      <button id="btnNewFromSettings" type="button" class="btn mid">以新时限开新局</button>
       <button id="btnSettingsBack" type="button" class="btn small">返回</button>
     </div>
   </div>
@@ -511,6 +505,7 @@ button[disabled] {
       <p><b>将军与胜负</b>　一方被将军时，必须应着解将。无法解将即将杀；没有合法着法可走为困毙；两种都判负。将帅不能在同一列无子相隔（将帅照面）。</p>
       <p><b>重复与限着</b>　本程序对三次重复局面判和；若重复局面全部发生在被将军状态，则判长将方负。连续 60 回合无吃子判和（自然限着）。这是面向触控对弈的简化实现。</p>
       <p><b>操作</b>　点自己的棋子，再点目标交点。选中后圆点表示空位，圆圈表示可吃子。悔棋在人机模式会退回电脑和你各一步；翻转只改变视角；提示会用本地浅层搜索给一着建议。</p>
+      <p><b>新局与棋钟</b>　模式、执子、棋力、计时方式与时限都在「新局」页；点「开始」按这些设置重开一局，棋钟按时限重置，切换模式也算开新局。对局中从「棋钟」面板可以暂停、开关棋钟，也能给任一方加时或减时（±1/±5/±10 分，减时最低保留 10 秒，防止误加时后减不回去）。</p>
       <p><b>回看与分析</b>　「上一步 / 下一步」只回看历史局面，不影响正在进行的对局，回看时棋钟暂停；「当前局面」回到最新一手。分析对当前看到的局面（含回看局面）计算评分、胜率与候选着法，只用本机引擎，不联网。</p>
       <p class="small">作者 yelina123 · 单文件离线版 · 黑白墨水屏优先。没有联网、没有账号、没有换肤。</p>
     </div>
@@ -1745,6 +1740,25 @@ function addTime(color, seconds) {
   renderStatus();
   saveState();
 }
+function shiftTime(color, seconds) {
+  flushClock();
+  var key = color === RED ? 'red' : 'black';
+  var cur = GAME.clocks[key];
+  var next = cur + seconds * 1000;
+  if (seconds < 0 && next < 10000) {
+    GAME.clockMsg = sideName(color) + ' −' + Math.abs(seconds / 60) + ' 分后低于 10 秒下限，已拦下（当前 ' + fmtClock(cur) + '）';
+    renderClocks();
+    return false;
+  }
+  GAME.clocks[key] = next;
+  GAME.clockMsg = sideName(color) + (seconds > 0 ? '加时 ' : '减时 ') + Math.abs(seconds / 60) + ' 分';
+  GAME.lastTs = nowMs();
+  renderClocks();
+  renderStatus();
+  if (SET.clockOn) { GAME.lastDisplay = nowMs(); }
+  saveState();
+  return true;
+}
 
 /* ---------- 走子与胜负 ---------- */
 function executeMove(m, byAI) {
@@ -2096,6 +2110,7 @@ function syncModeView() {
     ' ' + (LEVEL_DESC[MODE_TEMP.level] || ''));
   $('timeOn').className = 'optBtn sideItem' + (MODE_TEMP.clockOn ? ' sel' : '');
   $('timeOff').className = 'optBtn sideItem last' + (MODE_TEMP.clockOn ? '' : ' sel');
+  syncTimeControls();
   $('modeStart').innerHTML = MODE_TEMP.mode === 'ai' ? '开始人机对弈' : '开始线下对弈';
   $('modeNotes').innerHTML = MODE_TEMP.mode === 'ai'
     ? '你执' + (MODE_TEMP.humanSide === RED ? '红' : '黑') + '，电脑棋力「' + LEVEL_NAMES[MODE_TEMP.level] +
@@ -2104,6 +2119,7 @@ function syncModeView() {
   setTimeout(fitScreen, 30);
 }
 function startMode() {
+  if (SET.timeMode === 'custom') readSettingsInputs();
   SET.clockOn = !!MODE_TEMP.clockOn;
   GAME.mode = MODE_TEMP.mode;
   GAME.humanSide = MODE_TEMP.humanSide;
@@ -2118,7 +2134,7 @@ function openSettingsView() {
   syncSettingsView();
   showView('settings');
 }
-function syncSettingsView() {
+function syncTimeControls() {
   $('setBase').value = '' + Math.round(SET.base / 60);
   $('setInc').value = '' + SET.inc;
   var i;
@@ -2129,14 +2145,15 @@ function syncSettingsView() {
   } else {
     $('presetRow').className = '';
     $('customRow').className = 'hide';
-    if (!presetIndex(SET.base, SET.inc)) SET.base = 600, SET.inc = 5;
+    if (!presetIndex(SET.base, SET.inc)) { SET.base = 600; SET.inc = 5; }
     $('setBase').value = '' + Math.round(SET.base / 60);
     $('setInc').value = '' + SET.inc;
     markPreset(SET.base, SET.inc);
   }
   $('timePresetBtn').className = 'toggleBtn' + (SET.timeMode === 'custom' ? '' : ' sel');
   $('timeCustomBtn').className = 'toggleBtn' + (SET.timeMode === 'custom' ? ' sel' : '');
-  syncClockButtons();
+}
+function syncSettingsView() {
   syncRefreshButtons();
   syncAnalyseButtons();
 }
@@ -2144,10 +2161,6 @@ function syncAnalyseButtons() {
   $('anaAuto').className = 'toggleBtn' + (SET.analyseMode === 0 ? ' sel' : '');
   $('anaLight').className = 'toggleBtn' + (SET.analyseMode === 1 ? ' sel' : '');
   $('anaStrong').className = 'toggleBtn' + (SET.analyseMode === 2 ? ' sel' : '');
-}
-function syncClockButtons() {
-  $('clockOnBtn').className = 'toggleBtn' + (SET.clockOn ? ' sel' : '');
-  $('clockOffBtn').className = 'toggleBtn' + (!SET.clockOn ? ' sel' : '');
 }
 function syncRefreshButtons() {
   $('refresh1').className = 'toggleBtn' + (SET.refresh <= 1 ? ' sel' : '');
@@ -2320,10 +2333,7 @@ function closePanel() {
   $('panel').style.display = 'none';
 }
 function askNewGame() {
-  openPanel('开始新局', '当前对局、棋谱和棋钟都会被清空。', [
-    { label: '取消', cls: 'wide', fn: closePanel },
-    { label: '开新局', cls: 'small', fn: function () { closePanel(); startNewGame(); showView('game'); } }
-  ]);
+  openModeView();
 }
 function flashClock() {
   /* 切换棋钟时给墨水屏一个明确的整屏刷新 */
@@ -2334,16 +2344,29 @@ function flashClock() {
 }
 function openClockPanel() {
   var r = fmtClock(GAME.clocks.red), b = fmtClock(GAME.clocks.black);
-  var body = '<div>红方 <span class="ptime">' + r + '</span>　黑方 <span class="ptime">' + b + '</span></div>' +
-    '<div class="addRow">红方加时：' +
+  var msg = GAME.clockMsg ? '<div class="clockMsg">' + esc(GAME.clockMsg) + '</div>' : '';
+  GAME.clockMsg = '';
+  var body = '<div>红方 <span class="ptime">' + r + '</span>　黑方 <span class="ptime">' + b + '</span></div>' + msg +
+    '<div class="addRow">红方加时 / 减时</div>' +
+    '<div class="addRow">' +
     '<button id="addR1" type="button" class="addBtn">+1 分</button>' +
     '<button id="addR5" type="button" class="addBtn">+5 分</button>' +
-    '<button id="addR10" type="button" class="addBtn">+10 分</button></div>' +
-    '<div class="addRow">黑方加时：' +
+    '<button id="addR10" type="button" class="addBtn">+10 分</button>' +
+    '<button id="subR1" type="button" class="addBtn">−1 分</button>' +
+    '<button id="subR5" type="button" class="addBtn">−5 分</button>' +
+    '<button id="subR10" type="button" class="addBtn">−10 分</button>' +
+    '<div class="clr"></div></div>' +
+    '<div class="addRow">黑方加时 / 减时</div>' +
+    '<div class="addRow">' +
     '<button id="addB1" type="button" class="addBtn">+1 分</button>' +
     '<button id="addB5" type="button" class="addBtn">+5 分</button>' +
-    '<button id="addB10" type="button" class="addBtn">+10 分</button></div>' +
-    (SET.clockOn ? '' : '<div>棋钟当前关闭，加时只修改保存的剩余时间。</div>');
+    '<button id="addB10" type="button" class="addBtn">+10 分</button>' +
+    '<button id="subB1" type="button" class="addBtn">−1 分</button>' +
+    '<button id="subB5" type="button" class="addBtn">−5 分</button>' +
+    '<button id="subB10" type="button" class="addBtn">−10 分</button>' +
+    '<div class="clr"></div></div>' +
+    '<div class="clockTip">减时最低保留 10 秒，防止误加时。</div>' +
+    (SET.clockOn ? '' : '<div>棋钟当前关闭，加时/减时只修改保存的剩余时间。</div>');
   var buttons = [];
   if (!SET.clockOn) {
     buttons.push({ label: '开启棋钟', cls: 'small', fn: function () {
@@ -2365,15 +2388,20 @@ function openClockPanel() {
       closePanel(); render(); openClockPanel();
     } });
   }
-  buttons.push({ label: '设置时限', cls: 'small', fn: function () { closePanel(); openSettingsView(); } });
+  buttons.push({ label: '设置时限', cls: 'small', fn: function () { closePanel(); openModeView(); } });
   buttons.push({ label: '关闭', cls: 'small', fn: closePanel });
   openPanel('棋钟', body, buttons);
-  on($('addR1'), 'click', function () { addTime(RED, 60); closePanel(); openClockPanel(); });
-  on($('addR5'), 'click', function () { addTime(RED, 300); closePanel(); openClockPanel(); });
-  on($('addR10'), 'click', function () { addTime(RED, 600); closePanel(); openClockPanel(); });
-  on($('addB1'), 'click', function () { addTime(BLACK, 60); closePanel(); openClockPanel(); });
-  on($('addB5'), 'click', function () { addTime(BLACK, 300); closePanel(); openClockPanel(); });
-  on($('addB10'), 'click', function () { addTime(BLACK, 600); closePanel(); openClockPanel(); });
+  var pairs = [['addR1', RED, 60], ['addR5', RED, 300], ['addR10', RED, 600],
+               ['subR1', RED, -60], ['subR5', RED, -300], ['subR10', RED, -600],
+               ['addB1', BLACK, 60], ['addB5', BLACK, 300], ['addB10', BLACK, 600],
+               ['subB1', BLACK, -60], ['subB5', BLACK, -300], ['subB10', BLACK, -600]];
+  var i, it;
+  for (i = 0; i < pairs.length; i++) {
+    it = pairs[i];
+    (function (id, color, sec) {
+      on($(id), 'click', function () { shiftTime(color, sec); closePanel(); openClockPanel(); });
+    })(it[0], it[1], it[2]);
+  }
 }
 
 /* ---------- 自适应缩放 ---------- */
@@ -2431,9 +2459,9 @@ function bindUI() {
     if (!presetIndex(SET.base, SET.inc)) { SET.base = 600; SET.inc = 5; }
     $('setBase').value = '' + Math.round(SET.base / 60);
     $('setInc').value = '' + SET.inc;
-    syncSettingsView();
+    syncTimeControls();
   });
-  on($('timeCustomBtn'), 'click', function () { SET.timeMode = 'custom'; syncSettingsView(); });
+  on($('timeCustomBtn'), 'click', function () { SET.timeMode = 'custom'; syncTimeControls(); });
   on($('anaAuto'), 'click', function () { SET.analyseMode = 0; syncAnalyseButtons(); saveSettings(); });
   on($('anaLight'), 'click', function () { SET.analyseMode = 1; syncAnalyseButtons(); saveSettings(); });
   on($('anaStrong'), 'click', function () { SET.analyseMode = 2; syncAnalyseButtons(); saveSettings(); });
@@ -2442,13 +2470,10 @@ function bindUI() {
   on($('preset2'), 'click', function () { setPresetInputs(10, 5); });
   on($('preset3'), 'click', function () { setPresetInputs(15, 10); });
   on($('preset4'), 'click', function () { setPresetInputs(30, 0); });
-  on($('clockOnBtn'), 'click', function () { SET.clockOn = true; syncClockButtons(); });
-  on($('clockOffBtn'), 'click', function () { SET.clockOn = false; syncClockButtons(); });
   on($('refresh1'), 'click', function () { SET.refresh = 1; syncRefreshButtons(); });
   on($('refresh5'), 'click', function () { SET.refresh = 5; syncRefreshButtons(); });
   on($('refresh10'), 'click', function () { SET.refresh = 10; syncRefreshButtons(); });
   on($('btnSaveSettings'), 'click', function () { applySettings(true); showView('game'); });
-  on($('btnNewFromSettings'), 'click', function () { applySettings(false); startNewGame(); showView('game'); });
   on($('btnSettingsBack'), 'click', function () { showView('game'); });
   on($('rulesBack'), 'click', function () { showView('game'); });
 
