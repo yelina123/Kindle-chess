@@ -9,7 +9,7 @@
 | 项目 | 目录 | 在线入口 | 说明 |
 | --- | --- | --- | --- |
 | 国际象棋 | `chess/` | <https://yelina123.github.io/Kindle-chess/chess/> | 完整规则、棋钟与加时、棋盘编辑器、本地/云分析、本地/云人机对弈 |
-| 中国象棋 | `xiangqi/` | <https://yelina123.github.io/Kindle-chess/xiangqi/> | 完整规则、点按走子、棋钟/加时/暂停、悔棋、翻转、提示、五档本地人机、断点续局 |
+| 中国象棋 | `xiangqi/` | <https://yelina123.github.io/Kindle-chess/xiangqi/> | 完整规则、点按走子、棋钟/加时/暂停/无棋钟模式、悔棋、翻转、提示、上下步回看、六档本地人机、局面分析（胜率 + 候选）、断点续局 |
 
 两个项目在本地运行时是两个彼此独立的 HTML 文件；GitHub Pages 上通过根目录 `index.html` 选择进入哪一个。
 
