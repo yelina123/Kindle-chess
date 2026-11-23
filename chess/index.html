@@ -99,6 +99,20 @@ button {
 .btn:active { background: #000; color: #fff; }
 .btn[disabled] { color: #999; border-color: #999; }
 .btn.w135 { width: 135px; margin: 0 5px 6px 0; }
+.btn.w270 { width: 270px; margin: 0 5px 6px 0; }
+#intro {
+  display: none; height: 468px; border: 1px solid #000;
+  padding: 20px 18px 0 18px; -webkit-box-sizing: border-box; box-sizing: border-box;
+}
+#intro h3 {
+  margin: 0 0 10px 0; font-size: 24px; line-height: 32px; letter-spacing: 2px;
+  font-weight: normal; font-family: Georgia, "Songti SC", "STSong", serif;
+  border-bottom: 2px solid #000; padding-bottom: 8px;
+}
+#intro p { margin: 0 0 9px 0; font-size: 12px; line-height: 19px; }
+#intro .big { font-size: 16px; line-height: 24px; font-weight: bold; margin: 14px 0 8px 0; }
+#intro .small { font-size: 10px; line-height: 15px; }
+#intro .tag { display: inline-block; border: 1px solid #000; padding: 0 5px; margin: 0 4px 4px 0; font-size: 10px; line-height: 18px; }
 #bTime { margin-right: 0; }
 #bSet { margin-right: 0; }
 .btn.w182 { width: 182px; margin: 0 8px 6px 0; }
@@ -237,6 +251,13 @@ button {
 
   <!-- ===== 对局 ===== -->
   <div id="viewGame">
+    <div id="intro">
+      <h3>国际象棋</h3>
+      <p>单文件离线版，为 Kindle 第八代这类黑白墨水屏做的：完整规则（易位、吃过路兵、升变、三次重复与五十步）、点按走子、棋钟与加时、棋盘编辑器、断点续局；分析可走 Lichess 云 Stockfish，没收录时回退本地引擎。</p>
+      <p><span class="tag">点按操作</span><span class="tag">云分析可选</span><span class="tag">进度存本机</span><span class="tag">随视口等比缩放</span></p>
+      <p class="big">点下方「新局 / 换模式」开始一盘棋</p>
+      <p class="small">打开页面不会自动摆盘。模式（线下双人 / 人机）、执子、引擎与棋力、棋钟时限都在开新局页，一次设定即开局；上次对局仍保存在本机。<br>作者 yelina123 · 云引擎与云分析需要联网。</p>
+    </div>
     <div id="mainRow">
       <div id="boardSide">
         <div id="rankLabels"></div>
@@ -267,13 +288,12 @@ button {
 
     <div id="toolbar">
       <div class="trow">
-        <button class="btn w135" id="bNew">新局</button>
+        <button class="btn w270" id="bNew">新局 / 换模式</button>
         <button class="btn w135" id="bUndo">悔棋</button>
         <button class="btn w135" id="bFlip">翻转</button>
-        <button class="btn w135" id="bTime">加时</button>
       </div>
       <div class="trow">
-        <button class="btn w135" id="bMode">模式</button>
+        <button class="btn w135" id="bTime">加时</button>
         <button class="btn w135" id="bEdit">编辑器</button>
         <button class="btn w135" id="bAnalyse">分析</button>
         <button class="btn w135" id="bSet">设置</button>
@@ -324,7 +344,7 @@ button {
   <!-- ===== 对弈模式 ===== -->
   <div id="viewMode" style="display:none">
     <div class="vhead">
-      <div class="vtitle">对弈模式</div>
+      <div class="vtitle">开新局</div>
       <button class="vback" id="modeBack">返回对局</button>
     </div>
     <div class="modeCards">
@@ -362,8 +382,9 @@ button {
       <div class="clr"></div>
       <div class="mnote">等级越高，本地搜索越深、思考越久；云 Stockfish 未收录时按此档回退。</div>
     </div>
-    <div class="mnote" id="modeNote">切换模式会开始新局。</div>
-    <button class="btn" id="modeStart">以当前模式开始新局</button>
+    <div id="timeCtrl"></div>
+    <div class="mnote" id="modeNote">模式、棋力、棋钟与时限都在这一页；点「开始」按这些设置重开一局。</div>
+    <button class="btn" id="modeStart">按当前设置开新局</button>
     <div class="clr"></div>
     <div id="modeMsg"></div>
   </div>
@@ -1435,6 +1456,8 @@ var SET = {
 };
 var MODE = { human: true, compSide: 1, level: 2, cloud: true };
 var CLK = { w: 5 * 60000, b: 5 * 60000, run: false, active: 0, last: 0 };
+var PENDING_POS = null;   /* 编辑器摆好的局面：带到开新局页 */
+
 var GAME = {
   pos: null, startFen: '', hist: [], legal: [], selected: -1,
   last: null, result: null, keys: [], hint: null, pending: null,
@@ -1675,11 +1698,27 @@ function renderBoard() {
 }
 
 function updateButtons() {
+  if (GAME.intro) {
+    byId('bUndo').disabled = true;
+    byId('bFlip').disabled = true;
+    byId('bTime').disabled = true;
+    byId('bEdit').disabled = true;
+    byId('bAnalyse').disabled = true;
+    return;
+  }
+  byId('bFlip').disabled = false;
+  byId('bEdit').disabled = false;
+  byId('bAnalyse').disabled = false;
   byId('bUndo').disabled = (GAME.hist.length === 0 || GAME.thinking);
   byId('bTime').disabled = !SET.clockOn;
 }
 
 function renderAll() {
+  var iv = byId('intro'), mr = byId('mainRow');
+  if (iv && mr) {
+    iv.style.display = GAME.intro ? 'block' : 'none';
+    mr.style.display = GAME.intro ? 'none' : 'block';
+  }
   renderBoard();
   renderClocks();
   renderStatus();
@@ -1866,6 +1905,7 @@ function undoGame() {
 }
 
 function scheduleComputer() {
+  if (GAME.intro) return;
   if (!SET.vsComputer || GAME.result) return;
   if (GAME.pos.side !== SET.compSide) return;
   var gen = GAME.gen;
@@ -1904,6 +1944,7 @@ function scheduleComputer() {
 }
 
 function startFresh() {
+  GAME.intro = false;
   if (SET.vsComputer) SET.flipped = (SET.compSide === 0);
   resetGame(newPosition(), SET.pendBase, SET.pendInc, SET.pendOn, false);
 }
@@ -2260,8 +2301,8 @@ function applyEditor() {
   var msg = validateEditor(EDIT.pos);
   if (msg) { setEditMsg(msg); return; }
   SET.flipped = EDIT.flipped;
-  showView('game');
-  resetGame(clonePosition(EDIT.pos), SET.pendBase, SET.pendInc, SET.pendOn, false);
+  PENDING_POS = clonePosition(EDIT.pos);
+  openMode();
 }
 
 /* ---------- 设置 ---------- */
@@ -2276,32 +2317,8 @@ function renderSettings() {
   var html = '';
   var i, on;
 
-  html += '<div class="sect"><div class="sectTitle">时间控制（下一局）</div><div>';
-  for (i = 0; i < PRESETS.length; i++) {
-    var b = PRESETS[i][0], inc = PRESETS[i][1];
-    on = (SET.pendBase === b && SET.pendInc === inc && (b > 0 ? SET.pendOn : !SET.pendOn));
-    html += '<button class="gbtn' + (on ? ' on' : '') + '" id="pre' + i + '">' +
-      presetLabel(b, inc) + '</button>';
-  }
-  html += '</div><div class="clr"></div>';
-
-  html += '<div class="stepRow" style="height:46px"><div class="stepLabel">基础时间</div>' +
-    '<button class="stepBtn" id="bm5">-5</button><button class="stepBtn" id="bm1">-1</button>' +
-    '<div class="stepVal" id="pbVal">' + SET.pendBase + '</div>' +
-    '<button class="stepBtn" id="bp1">+1</button><button class="stepBtn" id="bp5">+5</button>' +
-    '<div class="stepUnit">分钟</div></div><div class="clr"></div>';
-
-  html += '<div class="stepRow" style="height:46px"><div class="stepLabel">每步加时</div>' +
-    '<button class="stepBtn" id="im5">-5</button><button class="stepBtn" id="im1">-1</button>' +
-    '<div class="stepVal" id="piVal">' + SET.pendInc + '</div>' +
-    '<button class="stepBtn" id="ip1">+1</button><button class="stepBtn" id="ip5">+5</button>' +
-    '<div class="stepUnit">秒</div></div><div class="clr"></div>';
-
-  html += '<div style="margin-top:6px"><button class="btn w180" id="setApply">按此设置开新局</button></div><div class="clr"></div>';
-  html += '<div class="note">开新局会清空当前棋局；赛制不会中途改变。</div></div>';
-
-  html += '<div class="sect"><div class="sectTitle">对弈模式</div>' +
-    '<div class="note">线下对弈 / 人机对弈、你执哪一方、电脑棋力，统一在工具栏「模式」页设置；模式设置只影响新局。</div></div>';
+  html += '<div class="sect"><div class="sectTitle">时间 / 模式</div>' +
+    '<div class="note">棋钟时限、线下双人 / 人机、执子、引擎与棋力，统一在工具栏「新局 / 换模式」页设置；这些设置只影响新局。</div></div>';
 
   html += '<div class="sect"><div class="sectTitle">显示与计算</div>' +
     segRow('棋钟刷新', [['rf1', '1 秒', SET.refresh === 1], ['rf5', '5 秒', SET.refresh === 5], ['rf10', '10 秒', SET.refresh === 10]]) +
@@ -2336,26 +2353,6 @@ function segRow(label, items) {
 
 function bindSettings() {
   var i;
-  for (i = 0; i < PRESETS.length; i++) {
-    (function (b, inc) {
-      byId('pre' + i).onclick = function () {
-        SET.pendBase = b; SET.pendInc = inc;
-        SET.pendOn = b > 0;
-        renderSettings();
-        saveState();
-      };
-    })(PRESETS[i][0], PRESETS[i][1]);
-  }
-  byId('bm5').onclick = function () { stepBase(-5); };
-  byId('bm1').onclick = function () { stepBase(-1); };
-  byId('bp1').onclick = function () { stepBase(1); };
-  byId('bp5').onclick = function () { stepBase(5); };
-  byId('im5').onclick = function () { stepInc(-5); };
-  byId('im1').onclick = function () { stepInc(-1); };
-  byId('ip1').onclick = function () { stepInc(1); };
-  byId('ip5').onclick = function () { stepInc(5); };
-  byId('setApply').onclick = function () { applyPending(); };
-
   byId('rf1').onclick = function () { SET.refresh = 1; renderSettings(); saveState(); };
   byId('rf5').onclick = function () { SET.refresh = 5; renderSettings(); saveState(); };
   byId('rf10').onclick = function () { SET.refresh = 10; renderSettings(); saveState(); };
@@ -2395,6 +2392,51 @@ function openMode() {
   renderMode();
 }
 
+function renderTimeCtrl() {
+  var html = '<div class="mrow"><div class="mlabel">棋钟 / 时限</div></div><div class="clr"></div>', i, b, inc, on;
+  for (i = 0; i < PRESETS.length; i++) {
+    b = PRESETS[i][0]; inc = PRESETS[i][1];
+    on = (SET.pendBase === b && SET.pendInc === inc && (b > 0 ? SET.pendOn : !SET.pendOn));
+    html += '<button class="gbtn' + (on ? ' on' : '') + '" id="pre' + i + '">' + presetLabel(b, inc) + '</button>';
+  }
+  html += '<div class="clr"></div>';
+  html += '<div class="stepRow" style="height:46px"><div class="stepLabel">基础时间</div>' +
+    '<button class="stepBtn" id="bm5">-5</button><button class="stepBtn" id="bm1">-1</button>' +
+    '<div class="stepVal" id="pbVal">' + SET.pendBase + '</div>' +
+    '<button class="stepBtn" id="bp1">+1</button><button class="stepBtn" id="bp5">+5</button>' +
+    '<div class="stepUnit">分钟</div></div><div class="clr"></div>';
+  html += '<div class="stepRow" style="height:46px"><div class="stepLabel">每步加时</div>' +
+    '<button class="stepBtn" id="im5">-5</button><button class="stepBtn" id="im1">-1</button>' +
+    '<div class="stepVal" id="piVal">' + SET.pendInc + '</div>' +
+    '<button class="stepBtn" id="ip1">+1</button><button class="stepBtn" id="ip5">+5</button>' +
+    '<div class="stepUnit">秒</div></div><div class="clr"></div>';
+  html += '<div class="note">「不限时」= 无棋钟：不显示计时、不判超时。开新局按这里的时限重置；对局中「加时」只改剩余时间。</div>';
+  byId('timeCtrl').innerHTML = html;
+  bindTimeCtrl();
+}
+
+function bindTimeCtrl() {
+  var i;
+  for (i = 0; i < PRESETS.length; i++) {
+    (function (b, inc) {
+      byId('pre' + i).onclick = function () {
+        SET.pendBase = b; SET.pendInc = inc;
+        SET.pendOn = b > 0;
+        renderTimeCtrl();
+        saveState();
+      };
+    })(PRESETS[i][0], PRESETS[i][1]);
+  }
+  byId('bm5').onclick = function () { stepBase(-5); renderTimeCtrl(); };
+  byId('bm1').onclick = function () { stepBase(-1); renderTimeCtrl(); };
+  byId('bp1').onclick = function () { stepBase(1); renderTimeCtrl(); };
+  byId('bp5').onclick = function () { stepBase(5); renderTimeCtrl(); };
+  byId('im5').onclick = function () { stepInc(-5); renderTimeCtrl(); };
+  byId('im1').onclick = function () { stepInc(-1); renderTimeCtrl(); };
+  byId('ip1').onclick = function () { stepInc(1); renderTimeCtrl(); };
+  byId('ip5').onclick = function () { stepInc(5); renderTimeCtrl(); };
+}
+
 function renderMode() {
   var i;
   byId('modeHuman').className = 'modeCard' + (MODE.human ? ' on' : '');
@@ -2415,18 +2457,26 @@ function renderMode() {
     (MODE.cloud ?
       '<br>引擎：Lichess 云 Stockfish；未收录或断网时按回退棋力本地走。' :
       '<br>引擎：本地 KindleChess。' + (MODE.level >= 3 ? ' 较强/强档会思考数秒。' : ''));
-  byId('modeStart').innerHTML = MODE.human ? '以线下模式开始新局' : '以人机模式开始新局';
-  byId('modeMsg').innerHTML = '';
+  byId('modeStart').innerHTML = PENDING_POS ? '以编辑器局面开始新局'
+    : (MODE.human ? '以线下模式开始新局' : '以人机模式开始新局');
+  byId('modeMsg').innerHTML = PENDING_POS
+    ? '起始局面：来自棋盘编辑器，点「开新局」就从这个局面开始。'
+    : '';
+  renderTimeCtrl();
   fitScreen();
 }
 
 function applyMode() {
+  var pos = PENDING_POS;
+  PENDING_POS = null;
   SET.vsComputer = !MODE.human;
   SET.compSide = MODE.compSide;
   SET.level = MODE.level;
   SET.cloudEngine = MODE.cloud;
+  GAME.intro = false;
   showView('game');
-  startFresh();
+  if (pos) resetGame(clonePosition(pos), SET.pendBase, SET.pendInc, SET.pendOn, false);
+  else startFresh();
   saveState();
 }
 
@@ -2566,8 +2616,8 @@ function gameClick(idx) {
 function bindStatic() {
   var i;
   byId('bNew').onclick = function () {
-    if (GAME.hist.length || GAME.result) confirmNewGame();
-    else startFresh();
+    PENDING_POS = null;
+    openMode();
   };
   byId('bUndo').onclick = undoGame;
   byId('bFlip').onclick = function () {
@@ -2579,8 +2629,8 @@ function bindStatic() {
   byId('bEdit').onclick = openEditor;
   byId('bAnalyse').onclick = runAnalysis;
   byId('bSet').onclick = function () { showView('settings'); renderSettings(); };
-  byId('bMode').onclick = openMode;
-  byId('modeBack').onclick = function () { showView('game'); };
+
+  byId('modeBack').onclick = function () { PENDING_POS = null; showView('game'); };
   byId('modeHuman').onclick = function () { MODE.human = true; renderMode(); };
   byId('modeCpu').onclick = function () { MODE.human = false; renderMode(); };
   byId('msWhite').onclick = function () { MODE.compSide = 1; renderMode(); };
@@ -2650,6 +2700,7 @@ function fitScreen() {
 }
 
 function init() {
+  GAME.intro = true;
   gCells = createBoard(byId('board'), gameClick);
   eCells = createBoard(byId('editBoard'), editClick);
   bindStatic();
