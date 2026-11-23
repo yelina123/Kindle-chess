@@ -82,6 +82,20 @@ button[disabled] {
 
 /* ---------- 对局主区 ---------- */
 #mainRow { height: 518px; position: relative; }
+#intro {
+  display: none; height: 518px; border: 1px solid #000;
+  padding: 22px 18px 0 18px; -webkit-box-sizing: border-box; box-sizing: border-box;
+  font-size: 0;
+}
+#intro h3 {
+  margin: 0 0 12px 0; font-size: 24px; line-height: 32px; letter-spacing: 2px;
+  font-weight: normal; font-family: Georgia, "Songti SC", "STSong", serif;
+  border-bottom: 2px solid #000; padding-bottom: 8px;
+}
+#intro p { margin: 0 0 10px 0; font-size: 12px; line-height: 20px; }
+#intro .big { font-size: 16px; line-height: 24px; font-weight: bold; margin: 16px 0 10px 0; }
+#intro .small { font-size: 10px; line-height: 15px; }
+#intro .tag { display: inline-block; border: 1px solid #000; padding: 0 5px; margin: 0 4px 4px 0; font-size: 10px; line-height: 18px; }
 #boardSide {
   float: left; width: 454px; height: 518px;
   margin-left: 0; position: relative;
@@ -348,6 +362,13 @@ button[disabled] {
 
   <!-- ===== 视图：对局 ===== -->
   <div id="viewGame">
+    <div id="intro">
+      <h3>中国象棋</h3>
+      <p>单文件离线版，为 Kindle 第八代这类黑白墨水屏做的：9×10 交点、完整走法（含马腿、象眼、炮架、将帅照面），六档本机引擎（Alpha-Beta v2，置换表 + PVS + 静态搜索），棋钟、上下步回看、局面分析与胜率、断点续局。</p>
+      <p><span class="tag">点按走子</span><span class="tag">无联网请求</span><span class="tag">进度存本机</span><span class="tag">随视口等比缩放</span></p>
+      <p class="big">点下方「新局 / 换模式」开始一盘棋</p>
+      <p class="small">打开页面不会自动摆盘。模式（线下双人 / 人机）、棋力、计时方式（有棋钟 / 无限时）和时限都在开新局页，一次设定即开局。<br>作者 yelina123 · 打开即用，不需要账号。</p>
+    </div>
     <div id="mainRow">
       <div id="boardSide">
         <div id="fileTop"></div>
@@ -1590,6 +1611,20 @@ function renderMoves() {
   }
   setHTML('moveList', html);
 }
+function syncIntroButtons() {
+  var ids = ['btnPrev', 'btnNext', 'btnUndo', 'btnLive', 'btnAnalyse', 'btnHint', 'btnFlip', 'btnClock'],
+      i;
+  for (i = 0; i < ids.length; i++) {
+    if ($(ids[i])) $(ids[i]).disabled = true;
+  }
+}
+function enableGameButtons() {
+  var ids = ['btnPrev', 'btnNext', 'btnUndo', 'btnLive', 'btnAnalyse', 'btnHint', 'btnFlip'],
+      i;
+  for (i = 0; i < ids.length; i++) {
+    if ($(ids[i])) $(ids[i]).disabled = false;
+  }
+}
 function updateButtons() {
   var undo = $('btnUndo'), hint = $('btnHint'), prev = $('btnPrev'),
       next = $('btnNext'), live = $('btnLive'), an = $('btnAnalyse');
@@ -1604,6 +1639,13 @@ function updateButtons() {
 }
 function render() {
   if (!GAME.pos) return;
+  var intro = $('intro'), row = $('mainRow');
+  if (intro && row) {
+    intro.style.display = GAME.intro ? 'block' : 'none';
+    row.style.display = GAME.intro ? 'none' : 'block';
+  }
+  if (GAME.intro) { syncIntroButtons(); return; }
+  enableGameButtons();
   renderPieces();
   renderStatus();
   renderMarks();
@@ -1881,6 +1923,7 @@ function finishGame(winner, reason) {
 
 /* ---------- 人机 ---------- */
 function maybeAI() {
+  if (GAME.intro) return;
   if (GAME.mode !== 'ai' || !GAME.pos || GAME.result || GAME.paused) return;
   if (GAME.review >= 0 || GAME.analyseBusy) return;
   if (GAME.pos.side !== GAME.aiSide || GAME.thinking) return;
@@ -1953,6 +1996,7 @@ function startNewGame() {
   GAME.review = -1;
   GAME.reviewPos = null;
   GAME.analyseBusy = false;
+  GAME.intro = false;
   GAME.gen++;
   if (GAME.aiTimer) { clearTimeout(GAME.aiTimer); GAME.aiTimer = null; }
   GAME.pos = newPosition();
@@ -2547,6 +2591,7 @@ function init() {
   buildBoard();
   bindUI();
   loadSettings();
+  GAME.intro = true;
   GAME.level = SET.level;
   GAME.review = -1;
   GAME.reviewPos = null;
