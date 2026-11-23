@@ -1323,11 +1323,27 @@ function buildBoard() {
     d.style.top = (25 + r * 50) + 'px';
     lines.appendChild(d);
   }
+  /* 竖线：河界（第 4、5 条横线之间）留空，只有最左最右两条边框线贯通 */
   for (c = 0; c < 9; c++) {
-    d = document.createElement('div');
-    d.className = 'vline';
-    d.style.left = (25 + c * 50) + 'px';
-    lines.appendChild(d);
+    if (c === 0 || c === 8) {
+      d = document.createElement('div');
+      d.className = 'vline';
+      d.style.left = (25 + c * 50) + 'px';
+      lines.appendChild(d);
+    } else {
+      d = document.createElement('div');
+      d.className = 'vline';
+      d.style.left = (25 + c * 50) + 'px';
+      d.style.top = '25px';
+      d.style.height = '200px';
+      lines.appendChild(d);
+      d = document.createElement('div');
+      d.className = 'vline';
+      d.style.left = (25 + c * 50) + 'px';
+      d.style.top = '275px';
+      d.style.height = '200px';
+      lines.appendChild(d);
+    }
   }
   /* 九宫斜线：shortest path 141px, rotate 45 / 135 */
   addDiag(diags, 175, 375, 45);
